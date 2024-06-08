@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "git-upstream-workflow"
+version = "0.0.1"
+description = "Git tools for working on branches to be committed upstream"
+authors = ["Fluendo S.A. <support@fluendo.com>"]
+readme = "README.md"
+classifiers = [
+    'Programming Language :: Python',
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+tomli = "^2.0.1"
+colorlog = "^6.8.2"
+
+[tool.poetry.scripts]
+flootstrap = "guw.main:run"
+
+[tool.poetry.group.dev.dependencies]
+black = {version = "*", allow-prereleases = true}
+coverage = "*"
+flake8 = "*"
+isort = "*"
+tox = "*"
+pytest = "^8.0.0"
+pre-commit = "*"
+tox-poetry-installer = {extras = ["poetry"], version = "^0.10.3"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88 
+
+[tool.isort]
+profile = "black"
+line_length = 88

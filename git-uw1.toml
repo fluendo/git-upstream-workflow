@@ -1,0 +1,24 @@
+[[remotes]]
+name = "origin"
+url = "git@github.com:fluendo/cerbero.git"
+
+[target]
+remote = "origin"
+branch = "final"
+
+[[features]]
+remote = "origin"
+name = "feature1"
+pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
+status = "merged"
+
+[[features]]
+remote = "origin"
+name = "feature2"
+pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
+status = "merging"
+
+[[features]]
+remote = "origin"
+name = "feature2"
+status = "pending"
