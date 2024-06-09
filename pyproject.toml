@@ -7,6 +7,9 @@ readme = "README.md"
 classifiers = [
     'Programming Language :: Python',
 ]
+packages = [
+    { include = "guw" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -14,7 +17,7 @@ tomli = "^2.0.1"
 colorlog = "^6.8.2"
 
 [tool.poetry.scripts]
-flootstrap = "guw.main:run"
+guw = "guw.main:run"
 
 [tool.poetry.group.dev.dependencies]
 black = {version = "*", allow-prereleases = true}
