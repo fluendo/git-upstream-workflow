@@ -1,0 +1,18 @@
+repos:
+  - repo: https://github.com/floatingpurr/sync_with_poetry
+    rev: 1.0.0
+    hooks:
+      - id: sync_with_poetry
+
+  # python import sorting - will amend files
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.9.3
+    hooks:
+      - id: isort
+
+  # black - formatting
+  - repo: https://github.com/psf/black
+    rev: 24.4.0
+    hooks:
+      - id: black
+
