@@ -2,27 +2,8 @@ import argparse
 import colorlog
 import logging
 import os
+import sys
 import tomli
-
-# parse the toml
-
-# global-rebasing 
-# The global rebasing is equal to the latest feature
-
-# apply
-# Apply every branch on top the previous one
-# create a tmp dir
-# checkout the main upstream branch
-# apply each diff of a non merged branch on top of the current aggregated branch
-
-# sync
-# sync branches that haven't been merged with the ones merged
-# with --backup, the original branches are kept on branches suffixed by a date
-# with --branch, only sync from branch upwards
-# generate a new .toml with the changes
-
-# generate the markup which is something like
-# * PR [status] [MR link]
 
 logger = logging.getLogger(__name__)
 stream_handle = colorlog.StreamHandler()
@@ -41,9 +22,15 @@ class GUW:
         # Fetch the source branch
         # Add the remotes
         # Checkout each branch
+        # apply each diff of a non merged branch on top of the current aggregated branch
+        # Depending on the status, proceed accordingly
+        # with --backup, the original branches are kept on branches suffixed by a date
+        # generate a new .toml with the changes
         pass
 
     def markdown(self):
+        # generate the markup which is something like
+        # * PR [status] [MR link]
         pass
 
 
@@ -68,7 +55,7 @@ def run():
     # Subparsers
     subparser = parser.add_subparsers(title="commands", dest="command")
     # Sync subcommand
-    sync_args = subparser.add_parser("rebase", help="Sync the list of branches based on the configuration")
+    sync_args = subparser.add_parser("sync", help="Sync the list of branches based on the configuration")
     sync_args.add_argument("-b", "--backup", help="Generate backup branches")
     # Markdown subcommand
     markdown_args = subparser.add_parser("markdown", help="Create a markdown content")
