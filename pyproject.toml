@@ -15,6 +15,7 @@ packages = [
 python = "^3.10"
 tomli = "^2.0.1"
 colorlog = "^6.8.2"
+gitpython = "^3.1.43"
 
 [tool.poetry.scripts]
 guw = "guw.main:run"

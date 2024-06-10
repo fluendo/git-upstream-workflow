@@ -8,21 +8,14 @@ branch = "final"
 
 [source]
 remote = "origin"
-branch = "main"
+branch = "example1-main"
 
 [[features]]
 remote = "origin"
-name = "feature1"
-pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
-status = "merged"
-
-[[features]]
-remote = "origin"
-name = "feature2"
-pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
+name = "example1-feature1"
 status = "merging"
 
 [[features]]
 remote = "origin"
-name = "feature3"
+name = "example1-feature2"
 status = "pending"
