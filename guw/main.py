@@ -80,7 +80,7 @@ class GUW:
         # Push every branch
         if not local:
             for branch,remote in to_push:
-                repo.git.push(remote, branch)
+                repo.git.push("-f", remote, branch)
         # TODO generate a new .toml for features from merged to integrated
 
     def sync(self, backup, keep, local):
