@@ -77,6 +77,7 @@ class GUW:
                 prev_active_feature = feature
                 has_pending = True
             prev_feature = feature
+        # TODO Make target branch be the last feature
         # Push every branch
         if not local:
             for branch,remote in to_push:
@@ -101,8 +102,19 @@ class GUW:
     def markdown(self):
         # generate the markup which is something like
         # * PR [status] [MR link]
-        pass
-
+        for feature in reversed(self.config["features"]):
+            li = f"* {feature['name']}"
+            if feature["status"] == "integrated":
+                li += "🔒"
+            elif feature["status"] == "merged":
+                li += " ✅"
+            elif feature["status"] == "merging":
+                li += " 📓"
+            elif feature["status"] == "pending":
+                li += " ❌"
+            if "pr" in feature:
+                li += f" [link]({feature['pr']})"
+            print(li)
 
 def run():
     levels = {
