@@ -28,12 +28,12 @@ class GUW:
         to_push = []
 
         # Fetch the source branch
-        source_remote = [x["url"] for x in self.config["remotes"] if x["name"] == self.config["source"]["remote"]][0]
-        # TODO set the remote name instead of origin
-        repo = git.Repo.clone_from(source_remote, tmpdir, branch=self.config["source"]["branch"])
+        source_remote = self.config["source"]["remote"]
+        source_url = [x["url"] for x in self.config["remotes"] if x["name"] == source_remote][0]
+        repo = git.Repo.clone_from(source_url, tmpdir, branch=self.config["source"]["branch"], multi_options=[f"--origin={source_remote}"])
         # Add the remotes
         for remote in self.config["remotes"]:
-            if remote["url"] == source_remote:
+            if remote["url"] == source_url:
                 continue
             else:
                 logger.debug(f"Adding remote {remote['name']} at {remote['url']}")
