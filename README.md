@@ -1,49 +1,63 @@
+This repository defines the process and tools to work on a project that is kept
+up-to-date with a remote (so-called upstream) repository.
+
 ## The workflow
 
-The "global-rebasing" process is the process where all feature branches are
-rebased on each other until generating the final repository.
+The workflow consists of a set of features where each feature is built on top of
+another. Each new feature is checked out from its parent's HEAD. The last feature
+branch holds all previous feature's commits. In general, the idea is merge upstream
+fast and don't stop working locally until merged.
 
-We need to have a list of branches to rebase on top of. For example, we have:
+In a graph, this means:
+```mermaid
+gitGraph TB:
+  commit
+  commit
+  branch feature1
+  commit
+  commit
+  branch feature2
+  commit
+  branch feature3
+  commit
+  commit
+  branch feature4
+  commit
+  commit
+  commit
+  branch feature5
+  commit
 ```
-o commit 11 [feature5, target]
-o commit 10
-o commit 9
-o commit 8  [feature4]
-o commit 7
-o commit 6  [feature3]
-o commit 5  [feature2]
-o commit 4
-o commit 3  [feature1]
-o commit 2
-o commit 1  [source]
-```
-
 So, feature 2 rebases on top of feature1, feature3 rebases on top of feature2, and so on ...
 
-When a feature, let's say feature1, enters into reviewing mode due to a merge request;
-feature1 is not going to be sent upstream but a new branch called feature1-reviewing.
+When a feature, let's say feature1, enters into reviewing mode due to a merge request,
+feature1 will not be sent upstream but a new branch called feature1-reviewing.
 
-```
-o commit 3 [feature1, feature1-reviewing]
-o commit 2
-o commit 1 [source]
+```mermaid
+gitGraph TB:
+  commit
+  commit
+  branch feature1
+  commit
 ```
 
 Usually, during that reviewing process, new commits might be added or removed, for example
-
-```
-o commit 3.2 [feature1-reviewing]
-o commit 3.1
-o commit 3   [feature1]
-o commit 2
-o commit 1   [source]
+```mermaid
+gitGraph TB:
+  commit
+  commit
+  branch feature1
+  commit
+  branch feature1-reviewing
+  commit
+  commit
 ```
 
 The process of generating the final branch will still be the rebasing against all feature
 branches, but feature1 is marked as "merging" in the file.
 
-Once all fixups, rebases, etc of the feature branch going upstream are done, the branch is
-marked as "merged", so the "global-rebasing" process is done by skipping feature1 but on top
+Once all fixups, rebases, etc, of the feature branch going upstream are done, the branch is
+marked as "merged", so the `sync` process is done by skipping feature1 but on top
 of a new main, the one with feature1-reviewing merged.
 
 
@@ -98,11 +112,12 @@ Each feature has the following key/value pairs:
 : The URL used for the merge-request/pull-request
 
 `status`
-: This defines how `guw` should handle the `sync` process.
-: In case of `pending`, this branch is still not requested to be integrated on the upstream project.
-: In case of `merging`, the branch has already opened a merge-request/pull-request and is waiting for the community to be reviewed.
-: In case of `merged`, the branch has already being merged but the other features depending on this have not being rebased yet.
-: In case of `integrated`, the dependant features have been rebased already and the actual feature is no longer considered in any process.
+: This defines how `guw` should handle the `sync` process. In case of `pending`, this branch is still not
+requested to be integrated on the upstream project. In case of `merging`, the branch has already opened a
+merge-request/pull-request and is waiting for the community to be reviewed. In case of `merged`, the branch
+has already being merged but the other features depending on this have not being rebased yet. In case of
+`integrated`, the dependant features have been rebased already and the actual feature is no longer considered
+in any process.
 
 ## Usage
 
