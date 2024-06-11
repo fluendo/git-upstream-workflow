@@ -1,6 +1,6 @@
 [[remotes]]
 name = "origin"
-url = "git@github.com:turran/git-upstream-workflow.git"
+url = "git@github.com:fluendo/git-upstream-workflow.git"
 
 [target]
 remote = "origin"
