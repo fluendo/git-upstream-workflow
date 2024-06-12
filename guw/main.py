@@ -121,19 +121,33 @@ class GUW:
 
     def markdown(self):
         # generate the markup which is something like
-        # * PR [status] [MR link]
-        for feature in reversed(self.config["features"]):
-            li = f"* `{feature['name']}`"
+        # * `PR` [status] [Branch link][MR link]
+        remote = self.config["source"]["remote"]
+        url = [x["url"] for x in self.config["remotes"] if x["name"] == remote][0]
+        if "https://" in url:
+            branch_url = url.replace(".git", "/tree/")
+        elif "git@github.com:" in url:
+            branch_url = url.replace("git@github.com:", "https://github.com/").replace(".git", "/tree/")
+        else:
+            branch_url = ""
+
+        for feature in self.config["features"]:
+            li = "* "
             if feature["status"] == "integrated":
-                li += " 🟢"
+                li += "🟢"
             elif feature["status"] == "merged":
-                li += " ✅"
+                li += "✅"
             elif feature["status"] == "merging":
-                li += " 🔄"
+                li += "🔄"
             elif feature["status"] == "pending":
-                li += " ⏳"
+                li += "⏳"
+            li += f" `{feature['name']}`"
+            if "summary" in feature:
+                li += f": {feature["summary"]}"
             if "pr" in feature:
-                li += f" [link]({feature['pr']})"
+                li += f" [(PR link)]({feature['pr']})"
+            elif branch_url:
+                li += f" [(Branch link)]({branch_url}{feature['name']})"
             print(li)
 
 def run():
