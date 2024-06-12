@@ -155,7 +155,7 @@ def run():
     )
     parser.add_argument("config", help="Configuration file")
     # Subparsers
-    subparser = parser.add_subparsers(title="commands", dest="command")
+    subparser = parser.add_subparsers(title="commands", dest="command", required=True)
     # Sync subcommand
     sync_args = subparser.add_parser("sync", help="Sync the list of branches based on the configuration")
     sync_args.add_argument("-b", "--backup", help="Generate backup branches", action="store_true")
