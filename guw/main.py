@@ -77,6 +77,7 @@ class GUW:
                     to_push.append((feature_backup_name, feature["remote"]))
                 # Ok, let's rebase on top of the prev_active_feature
                 repo.git.rebase("--onto", prev_active_feature["name"], prev_feature_branch, feature["name"])
+                to_push.append((feature["name"], feature["remote"]))
                 prev_active_feature = feature
                 has_pending = True
             prev_feature = feature
