@@ -123,15 +123,15 @@ class GUW:
         # generate the markup which is something like
         # * PR [status] [MR link]
         for feature in reversed(self.config["features"]):
-            li = f"* {feature['name']}"
+            li = f"* `{feature['name']}`"
             if feature["status"] == "integrated":
-                li += "🔒"
+                li += " 🟢"
             elif feature["status"] == "merged":
                 li += " ✅"
             elif feature["status"] == "merging":
-                li += " 📓"
+                li += " 🔄"
             elif feature["status"] == "pending":
-                li += " ❌"
+                li += " ⏳"
             if "pr" in feature:
                 li += f" [link]({feature['pr']})"
             print(li)
