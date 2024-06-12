@@ -92,6 +92,7 @@ class GUW:
                     logger.debug(f"Backing up target branch into {feature_backup_name}")
                     repo.git.branch("-c", feature_backup_name)
                     to_push.append((feature_backup_name, self.config["target"]["remote"]))
+                repo.git.reset("--hard", last_feature["name"])
                 to_push.append((self.config["target"]["branch"], self.config["target"]["remote"]))
             else:
                 logger.info("All features already integrated, nothing to do")
