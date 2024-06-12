@@ -120,7 +120,21 @@ has already being merged but the other features depending on this have not being
 in any process.
 
 ## Usage
+First you need to install the package
+```
+pip install git+https://github.com/fluendo/git-upstream-workflow.git
+```
+After that, you will the command `guw`, with several options, the most used one is to sync branches based on
+a configuration, simply do:
+```
+guw -l debug example1.toml sync -l -b
+```
+This will generate a temporary folder, fetch each remote, checkout each branch and finally rebase each feature.
+Note the `-l` and `-b` option. The former specifies a local-only process, no branch will be pushed. The latter
+does a backup branch of each feature processed.
 
 ## Recommendations
 * Never push into the `target` branch by other means but through `guw`, otherwise your new commits will
-  be lost after a `sync` process
+  be lost after a `sync` process.
+* Once a feature branch enters into an upstream reviewing process, use a -reviewing branch and never commit
+  changes back to the original feature branch.
