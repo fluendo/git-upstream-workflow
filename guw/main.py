@@ -22,9 +22,13 @@ class GUW:
     def __init__(self, config):
         self.config = config
 
+    def _backup_name(self, name):
+        today = str(date.today())
+        backup_name = f"{name}-{today}"
+        return backup_name
+
     def _sync_at(self, tmpdir, backup, local):
         logger.info(f"Work directory at {tmpdir}")
-        today = str(date.today())
         to_push = []
 
         # Fetch the source branch
@@ -40,7 +44,6 @@ class GUW:
                 r = repo.create_remote(remote["name"], remote["url"])
                 logger.debug(f"Fetching remote {remote['name']}")
                 r.fetch()
-        # Create the target branch locally
         prev_feature = {"remote": self.config["source"]["remote"], "name": self.config["source"]["branch"]}
         # Keep track of the features but the integrated ones
         prev_active_feature = prev_feature
@@ -68,19 +71,34 @@ class GUW:
                 prev_feature_branch = f"{prev_feature['remote']}/{prev_feature['name']}"
                 logger.debug(f"Rebasing {feature['name']} onto {prev_active_feature['name']} until {prev_feature_branch}")
                 if backup:
-                    feature_backup_name = f"{feature['name']}-{today}"
+                    feature_backup_name = self._backup_name(feature['name'])
                     logger.debug(f"Backing up {feature['name']} into {feature_backup_name}")
                     repo.git.branch("-c", feature_backup_name)
-                    to_push.append((feature_backup_name, feature['remote']))
+                    to_push.append((feature_backup_name, feature["remote"]))
                 # Ok, let's rebase on top of the prev_active_feature
                 repo.git.rebase("--onto", prev_active_feature["name"], prev_feature_branch, feature["name"])
                 prev_active_feature = feature
                 has_pending = True
             prev_feature = feature
-        # TODO Make target branch be the last feature
+        # Make target branch be the last feature
+        last_feature = self.config["features"][-1]
+        if last_feature:
+            if last_feature["status"] != "integrated":
+                target_branch = f"{self.config['target']['remote']}/{self.config['target']['branch']}"
+                last_feature_branch = f"{last_feature['remote']}/{last_feature['name']}"
+                repo.git.checkout("-b", self.config["target"]["branch"], last_feature_branch)
+                if backup:
+                    feature_backup_name = self._backup_name(self.config['target']['branch'])
+                    logger.debug(f"Backing up target branch into {feature_backup_name}")
+                    repo.git.branch("-c", feature_backup_name)
+                    to_push.append((feature_backup_name, self.config["target"]["remote"]))
+                to_push.append((self.config["target"]["branch"], self.config["target"]["remote"]))
+            else:
+                logger.info("All features already integrated, nothing to do")
         # Push every branch
         if not local:
             for branch,remote in to_push:
+                logger.debug(f"Pushing {branch} to {remote}")
                 repo.git.push("-f", remote, branch)
         # TODO generate a new .toml for features from merged to integrated
 
