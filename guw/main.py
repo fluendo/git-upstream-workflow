@@ -122,16 +122,16 @@ class GUW:
     def markdown(self):
         # generate the markup which is something like
         # * `PR` [status] [Branch link][MR link]
-        remote = self.config["source"]["remote"]
-        url = [x["url"] for x in self.config["remotes"] if x["name"] == remote][0]
-        if "https://" in url:
-            branch_url = url.replace(".git", "/tree/")
-        elif "git@github.com:" in url:
-            branch_url = url.replace("git@github.com:", "https://github.com/").replace(".git", "/tree/")
-        else:
-            branch_url = ""
 
         for feature in self.config["features"]:
+            remote = feature["remote"]
+            url = [x["url"] for x in self.config["remotes"] if x["name"] == remote][0]
+            if "https://" in url:
+                branch_url = url.replace(".git", "/tree/")
+            elif "git@github.com:" in url:
+                branch_url = url.replace("git@github.com:", "https://github.com/").replace(".git", "/tree/")
+            else:
+                branch_url = ""
             li = "* "
             if feature["status"] == "integrated":
                 li += "🟢"
