@@ -143,7 +143,7 @@ class GUW:
                 li += "⏳"
             li += f" `{feature['name']}`"
             if "summary" in feature:
-                li += f": {feature["summary"]}"
+                li += f": {feature['summary']}"
             if "pr" in feature:
                 li += f" [(PR link)]({feature['pr']})"
             elif branch_url:
