@@ -58,7 +58,7 @@ class GUW:
             if feature["status"] == "integrated":
                 if has_pending:
                     logger.critical(f"Feature {feature['name']} marked as integrated but after a pending feature")
-                    break
+                    return
                 logger.debug(f"Feature {feature['name']} already integrated, nothing to do")
             elif feature["status"] == "merged":
                 # When a feature (feature1) is merged, we don't really know what commits went upstream
@@ -80,6 +80,9 @@ class GUW:
                 to_push.append((feature["name"], feature["remote"]))
                 prev_active_feature = feature
                 has_pending = True
+            else:
+                logger.critical(f"Feature {feature['name']} has unknown status: '{feature['status']}'")
+                return
             prev_feature = feature
         # Make target branch be the last feature
         last_feature = self.config["features"][-1]
