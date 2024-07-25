@@ -194,3 +194,6 @@ def run():
             guw.sync(args.backup, args.keep, args.local)
         elif args.command == "markdown":
             guw.markdown()
+
+if __name__ == '__main__':
+    run()
