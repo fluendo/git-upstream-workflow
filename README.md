@@ -62,6 +62,10 @@ of a new main, the one with feature1-reviewing merged.
 
 
 ## Configuration file
+
+You create and periodically update this file by hand.
+(Possibly, in the future, we can create integration plugins for GitHub and GitLab for updating statuses automatically.)
+
 ```TOML
 [[remotes]]
 name = "origin"
@@ -112,19 +116,25 @@ Each feature has the following key/value pairs:
 : The URL used for the merge-request/pull-request
 
 `status`
-: This defines how `guw` should handle the `sync` process. In case of `pending`, this branch is still not
-requested to be integrated on the upstream project. In case of `merging`, the branch has already opened a
-merge-request/pull-request and is waiting for the community to be reviewed. In case of `merged`, the branch
-has already being merged but the other features depending on this have not being rebased yet. In case of
-`integrated`, the dependant features have been rebased already and the actual feature is no longer considered
-in any process.
+: This defines how `guw` should handle the `sync` process.
+Features with the same status compose groups in a strict order:
+
+1. `integrated` - already integrated, nothing to do;
+the dependant features have been rebased already and the actual feature is no longer considered in any process.
+1. `merged` - already merged, nothing to do;
+the branch has already being merged but the other features depending on this have not being rebased yet.
+1. `merging`, the branch has already opened a merge-request/pull-request
+and is waiting for the community to be reviewed
+1. `pending`, this branch is still not requested to be integrated on the upstream project.
+
+You cannot mix these groups.
 
 ## Usage
 First you need to install the package
 ```
 pip install git+https://github.com/fluendo/git-upstream-workflow.git
 ```
-After that, you will the command `guw`, with several options, the most used one is to sync branches based on
+After that, you will have the command `guw`, with several options, the most used one is to sync branches based on
 a configuration, simply do:
 ```
 guw -l debug example1.toml sync -l -b
