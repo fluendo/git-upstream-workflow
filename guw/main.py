@@ -107,8 +107,8 @@ class GUW:
                 repo.git.push("-f", remote, branch)
         # TODO generate a new .toml for features from merged to integrated
 
-    def sync(self, backup, keep, local):
-        tmpdir = tempfile.mkdtemp()
+    def sync(self, backup, keep, local, folder):
+        tmpdir = folder if folder else tempfile.mkdtemp()
         exception = None
         try:
             self._sync_at(tmpdir, backup, local)
@@ -176,8 +176,9 @@ def run():
     # Sync subcommand
     sync_args = subparser.add_parser("sync", help="Sync the list of branches based on the configuration")
     sync_args.add_argument("-b", "--backup", help="Generate backup branches", action="store_true")
-    sync_args.add_argument("-k", "--keep", help="Keep temporary folder", action="store_true")
+    sync_args.add_argument("-k", "--keep", help="Keep working folder", action="store_true")
     sync_args.add_argument("-l", "--local", help="Don't push anything, but keep everything local", action="store_true")
+    sync_args.add_argument("-d", "--folder", help="Working folder, otherwise a new temporary folder is used.", default=None)
     # Markdown subcommand
     markdown_args = subparser.add_parser("markdown", help="Create a markdown content")
 
@@ -191,7 +192,7 @@ def run():
         config = tomli.load(fconfig)
         guw = GUW(config)
         if args.command == "sync":
-            guw.sync(args.backup, args.keep, args.local)
+            guw.sync(args.backup, args.keep, args.local, args.folder)
         elif args.command == "markdown":
             guw.markdown()
 
