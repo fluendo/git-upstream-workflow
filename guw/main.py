@@ -88,16 +88,17 @@ class GUW:
         last_feature = self.config["features"][-1]
         if last_feature:
             if last_feature["status"] != "integrated":
-                target_branch = f"{self.config['target']['remote']}/{self.config['target']['branch']}"
+                target_branch_name = self.config['target']['branch']
                 last_feature_branch = f"{last_feature['remote']}/{last_feature['name']}"
-                repo.git.checkout("-b", self.config["target"]["branch"], last_feature_branch)
+                logger.info(f"Making target branch {target_branch_name} based on {last_feature_branch}")
+                repo.git.checkout("-b", target_branch_name, last_feature_branch)
                 if backup:
-                    feature_backup_name = self._backup_name(self.config['target']['branch'])
+                    feature_backup_name = self._backup_name(target_branch_name)
                     logger.debug(f"Backing up target branch into {feature_backup_name}")
                     repo.git.branch("-c", feature_backup_name)
                     to_push.append((feature_backup_name, self.config["target"]["remote"]))
                 repo.git.reset("--hard", last_feature["name"])
-                to_push.append((self.config["target"]["branch"], self.config["target"]["remote"]))
+                to_push.append((target_branch_name, self.config["target"]["remote"]))
             else:
                 logger.info("All features already integrated, nothing to do")
         # Push every branch
