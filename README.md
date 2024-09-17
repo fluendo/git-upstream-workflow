@@ -1,6 +1,12 @@
 This repository defines the process and tools to work on a project that is kept
 up-to-date with a remote (so-called upstream) repository.
 
+When working with open-source projects, new features or bug fixes can be  
+needed. Using plugins or hooks to add features is generally recommended without 
+having to fork. However, sometimes this is not possible (bugfix, core features...). 
+The process defined here helps maintain a fork where managing pending 
+contributions before reaching upstream will be simple.
+
 ## The workflow
 
 The workflow consists of a set of features where each feature is built on top of
@@ -53,8 +59,8 @@ gitGraph TB:
   commit
 ```
 
-The process of generating the final branch will still be the rebasing against all feature
-branches, but feature1 is marked as "merging" in the file.
+The process of generating the final target branch will still be the rebasing against all 
+feature branches, but feature1 is marked as "merging" in the file.
 
 Once all fixups, rebases, etc, of the feature branch going upstream are done, the branch
 must be integrated back with the `integrate` command. This is done on the `sync` process
@@ -127,6 +133,18 @@ and is waiting for the community to be reviewed
 1. `pending`, this branch is still not requested to be integrated on the upstream project.
 
 You cannot mix these groups.
+
+
+```mermaid
+stateDiagram-v2
+    pending --> merging
+    merging --> integrated
+```
+
+Internal reviews done before adding a feature must be done before updating the toml file, and the target branch 
+must always be in a valid state without conflict. A similar workflow must be used to update or remove a feature. The 
+`guw` tool provides commands to `add`, `update`, and  `remove` features. More info about these use cases are 
+described into [here](docs/workflows.md).
 
 ## Usage
 First you need to install the package
