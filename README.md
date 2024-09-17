@@ -1,6 +1,13 @@
 This repository defines the process and tools to work on a project that is kept
 up-to-date with a remote (so-called upstream) repository.
 
+When working with open-source projects, new features can be needed
+before reaching upstream. Using plugins or hooks to add features is
+generally recommended without having to fork. However, sometimes this
+is not possible (bugfix, core features...). The process defined here
+helps maintain a fork where managing pending contributions upstream will
+be simple.
+
 ## The workflow
 
 The workflow consists of a set of features where each feature is built on top of
@@ -53,8 +60,8 @@ gitGraph TB:
   commit
 ```
 
-The process of generating the final branch will still be the rebasing against all feature
-branches, but feature1 is marked as "merging" in the file.
+The process of generating the final target branch will still be the rebasing against all 
+feature branches, but feature1 is marked as "merging" in the file.
 
 Once all fixups, rebases, etc, of the feature branch going upstream are done, the branch is
 marked as "merged", so the `sync` process is done by skipping feature1 but on top
@@ -118,6 +125,17 @@ merge-request/pull-request and is waiting for the community to be reviewed. In c
 has already being merged but the other features depending on this have not being rebased yet. In case of
 `integrated`, the dependant features have been rebased already and the actual feature is no longer considered
 in any process.
+
+
+```mermaid
+stateDiagram-v2
+    pending --> merging
+    merging --> merged
+    merged --> integrated
+```
+
+Iternal reviews done before doing the contibution must be should be done before the pending state to be sure 
+target branch is always in a valid state.
 
 ## Usage
 First you need to install the package
