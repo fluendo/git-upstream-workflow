@@ -58,7 +58,7 @@ class GUW:
             if feature["status"] == "integrated":
                 if has_pending:
                     logger.critical(f"Feature {feature['name']} marked as integrated but after a pending feature")
-                    break
+                    return
                 logger.debug(f"Feature {feature['name']} already integrated, nothing to do")
             elif feature["status"] == "merged":
                 # When a feature (feature1) is merged, we don't really know what commits went upstream
@@ -80,21 +80,25 @@ class GUW:
                 to_push.append((feature["name"], feature["remote"]))
                 prev_active_feature = feature
                 has_pending = True
+            else:
+                logger.critical(f"Feature {feature['name']} has unknown status: '{feature['status']}'")
+                return
             prev_feature = feature
         # Make target branch be the last feature
         last_feature = self.config["features"][-1]
         if last_feature:
             if last_feature["status"] != "integrated":
-                target_branch = f"{self.config['target']['remote']}/{self.config['target']['branch']}"
+                target_branch_name = self.config['target']['branch']
                 last_feature_branch = f"{last_feature['remote']}/{last_feature['name']}"
-                repo.git.checkout("-b", self.config["target"]["branch"], last_feature_branch)
+                logger.info(f"Making target branch {target_branch_name} based on {last_feature_branch}")
+                repo.git.checkout("-b", target_branch_name, last_feature_branch)
                 if backup:
-                    feature_backup_name = self._backup_name(self.config['target']['branch'])
+                    feature_backup_name = self._backup_name(target_branch_name)
                     logger.debug(f"Backing up target branch into {feature_backup_name}")
                     repo.git.branch("-c", feature_backup_name)
                     to_push.append((feature_backup_name, self.config["target"]["remote"]))
                 repo.git.reset("--hard", last_feature["name"])
-                to_push.append((self.config["target"]["branch"], self.config["target"]["remote"]))
+                to_push.append((target_branch_name, self.config["target"]["remote"]))
             else:
                 logger.info("All features already integrated, nothing to do")
         # Push every branch
@@ -104,8 +108,8 @@ class GUW:
                 repo.git.push("-f", remote, branch)
         # TODO generate a new .toml for features from merged to integrated
 
-    def sync(self, backup, keep, local):
-        tmpdir = tempfile.mkdtemp()
+    def sync(self, backup, keep, local, folder):
+        tmpdir = folder if folder else tempfile.mkdtemp()
         exception = None
         try:
             self._sync_at(tmpdir, backup, local)
@@ -173,8 +177,9 @@ def run():
     # Sync subcommand
     sync_args = subparser.add_parser("sync", help="Sync the list of branches based on the configuration")
     sync_args.add_argument("-b", "--backup", help="Generate backup branches", action="store_true")
-    sync_args.add_argument("-k", "--keep", help="Keep temporary folder", action="store_true")
+    sync_args.add_argument("-k", "--keep", help="Keep working folder", action="store_true")
     sync_args.add_argument("-l", "--local", help="Don't push anything, but keep everything local", action="store_true")
+    sync_args.add_argument("-d", "--folder", help="Working folder, otherwise a new temporary folder is used.", default=None)
     # Markdown subcommand
     markdown_args = subparser.add_parser("markdown", help="Create a markdown content")
 
@@ -188,6 +193,9 @@ def run():
         config = tomli.load(fconfig)
         guw = GUW(config)
         if args.command == "sync":
-            guw.sync(args.backup, args.keep, args.local)
+            guw.sync(args.backup, args.keep, args.local, args.folder)
         elif args.command == "markdown":
             guw.markdown()
+
+if __name__ == '__main__':
+    run()
