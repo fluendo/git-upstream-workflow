@@ -8,6 +8,7 @@ import shutil
 import sys
 import tempfile
 import tomli
+import tomli_w
 
 logger = logging.getLogger(__name__)
 stream_handle = colorlog.StreamHandler()
@@ -141,7 +142,7 @@ class GUW:
             exit(1)
 
     def dump(self):
-        print(self.config)
+        print(tomli_w.dumps(self.config))
 
     def markdown(self):
         # generate the markup which is something like
