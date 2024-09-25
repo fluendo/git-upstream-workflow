@@ -102,9 +102,18 @@ class GUW:
                 feature["status"] = "pending"
                 # We don't update prev_feature so the next branch updates not
                 # to this but the previous feature
+            elif feature["status"] == "_remove":
+                logger.debug(f"Removing feature {feature['name']}")
+                # In this case we don't do anything, just skip, so the next feature will
+                # rebase on top of the previous one
+                prev_feature = feature
             else:
                 logger.critical(f"Feature {feature['name']} has unknown status: '{feature['status']}'")
                 return
+        # Now remove every feature that must be removed
+        self.config["features"] = [
+            f for f in self.config["features"] if f["status"] != "_remove"
+        ]
         # Make target branch be the last feature
         last_feature = self.config["features"][-1]
         if last_feature:
@@ -204,6 +213,22 @@ class GUW:
         # Dump the new toml
         self.dump()
 
+    def remove(self, backup, keep, local, folder, to_remove):
+        found = None
+        for feature in self.config["features"]:
+            if feature["name"] == to_remove:
+                found = feature
+                break
+        if not found:
+            logger.critical(f"Feature {to_remove} not found")
+            return
+        found["status"] = "_remove"
+        # Sync it again
+        self.sync(backup, keep, local, folder)
+        # Dump the new toml
+        self.dump()
+
+
 def run():
     levels = {
         "critical": logging.CRITICAL,
@@ -241,6 +266,27 @@ def run():
     add_args.add_argument("new_feature", help="Name of the new feature branch")
     add_args.add_argument("new_feature_remote", help="Remote for the new branch")
     add_args.add_argument("prev_feature", help="Name of the feature the new feature should be on top of", nargs="?")
+    # Remove subcommand
+    add_args = subparser.add_parser("remove", help="Remove a feature")
+    add_args.add_argument(
+        "-b", "--backup", help="Generate backup branches", action="store_true"
+    )
+    add_args.add_argument(
+        "-k", "--keep", help="Keep working folder", action="store_true"
+    )
+    add_args.add_argument(
+        "-l",
+        "--local",
+        help="Don't push anything, but keep everything local",
+        action="store_true",
+    )
+    add_args.add_argument(
+        "-d",
+        "--directory",
+        help="Working directory, otherwise a new temporary directory is used.",
+        default=None,
+    )
+    add_args.add_argument("feature", help="Name of the feature to remove")
 
     # Parse the options, if any
     args = parser.parse_args(sys.argv[1:])
@@ -258,6 +304,9 @@ def run():
         elif args.command == "add":
             guw.add(args.backup, args.keep, args.local, args.directory,
                 args.new_feature, args.new_feature_remote, args.prev_feature)
+        elif args.command == "remove":
+            guw.remove(args.backup, args.keep, args.local, args.directory, args.feature)
+
 
 if __name__ == '__main__':
     run()
