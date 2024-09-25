@@ -1,12 +1,13 @@
 import argparse
-import colorlog
-from datetime import date
-import git
 import logging
 import os
 import shutil
 import sys
 import tempfile
+from datetime import date
+
+import colorlog
+import git
 import tomli
 import tomli_w
 
@@ -18,6 +19,7 @@ formatter = colorlog.ColoredFormatter(
 
 stream_handle.setFormatter(formatter)
 logger.addHandler(stream_handle)
+
 
 class GUW:
     def __init__(self, config):
@@ -31,9 +33,11 @@ class GUW:
 
     def _rebase(self, repo, from_ft, until_ft, to_ft, backup=False):
         until_ft_branch = f"{until_ft['remote']}/{until_ft['name']}"
-        logger.debug(f"Rebasing {from_ft['name']} onto {to_ft['name']} until {until_ft_branch}")
+        logger.debug(
+            f"Rebasing {from_ft['name']} onto {to_ft['name']} until {until_ft_branch}"
+        )
         if backup:
-            feature_backup_name = self._backup_name(from_ft['name'])
+            feature_backup_name = self._backup_name(from_ft["name"])
             logger.debug(f"Backing up {from_ft['name']} into {feature_backup_name}")
             repo.git.branch("-c", feature_backup_name)
             self.to_push.append((feature_backup_name, from_ft["remote"]))
@@ -43,7 +47,7 @@ class GUW:
 
     def _push(self, repo, local):
         if not local:
-            for branch,remote in self.to_push:
+            for branch, remote in self.to_push:
                 logger.debug(f"Pushing {branch} to {remote}")
                 repo.git.push("-f", remote, branch)
         self.to_push = []
@@ -53,8 +57,15 @@ class GUW:
 
         # Fetch the source branch
         source_remote = self.config["source"]["remote"]
-        source_url = [x["url"] for x in self.config["remotes"] if x["name"] == source_remote][0]
-        repo = git.Repo.clone_from(source_url, tmpdir, branch=self.config["source"]["branch"], multi_options=[f"--origin={source_remote}"])
+        source_url = [
+            x["url"] for x in self.config["remotes"] if x["name"] == source_remote
+        ][0]
+        repo = git.Repo.clone_from(
+            source_url,
+            tmpdir,
+            branch=self.config["source"]["branch"],
+            multi_options=[f"--origin={source_remote}"],
+        )
         # Add the remotes
         for remote in self.config["remotes"]:
             if remote["url"] == source_url:
@@ -64,12 +75,17 @@ class GUW:
                 r = repo.create_remote(remote["name"], remote["url"])
                 logger.debug(f"Fetching remote {remote['name']}")
                 r.fetch()
-        prev_feature = {"remote": self.config["source"]["remote"], "name": self.config["source"]["branch"]}
+        prev_feature = {
+            "remote": self.config["source"]["remote"],
+            "name": self.config["source"]["branch"],
+        }
         # Keep track of the features but the integrated ones
         prev_active_feature = prev_feature
         has_pending = False
         for feature in self.config["features"]:
-            logger.info(f"Syncing feature {feature['name']} with previous active {prev_active_feature['name']}")
+            logger.info(
+                f"Syncing feature {feature['name']} with previous active {prev_active_feature['name']}"
+            )
             # Checkout the remote branch
             feature_branch = f"{feature['remote']}/{feature['name']}"
             logger.debug(f"Creating local branch {feature_branch}")
@@ -77,9 +93,13 @@ class GUW:
             # Check the status to know how to proceed
             if feature["status"] == "integrated":
                 if has_pending:
-                    logger.critical(f"Feature {feature['name']} marked as integrated but after a pending feature")
+                    logger.critical(
+                        f"Feature {feature['name']} marked as integrated but after a pending feature"
+                    )
                     return
-                logger.debug(f"Feature {feature['name']} already integrated, nothing to do")
+                logger.debug(
+                    f"Feature {feature['name']} already integrated, nothing to do"
+                )
                 prev_feature = feature
             elif feature["status"] == "merged":
                 # When a feature (feature1) is merged, we don't really know what commits went upstream
@@ -108,7 +128,9 @@ class GUW:
                 # rebase on top of the previous one
                 prev_feature = feature
             else:
-                logger.critical(f"Feature {feature['name']} has unknown status: '{feature['status']}'")
+                logger.critical(
+                    f"Feature {feature['name']} has unknown status: '{feature['status']}'"
+                )
                 return
         # Now remove every feature that must be removed
         self.config["features"] = [
@@ -118,17 +140,23 @@ class GUW:
         last_feature = self.config["features"][-1]
         if last_feature:
             if last_feature["status"] != "integrated":
-                target_branch_name = self.config['target']['branch']
+                target_branch_name = self.config["target"]["branch"]
                 last_feature_branch = f"{last_feature['remote']}/{last_feature['name']}"
-                logger.info(f"Making target branch {target_branch_name} based on {last_feature_branch}")
+                logger.info(
+                    f"Making target branch {target_branch_name} based on {last_feature_branch}"
+                )
                 repo.git.checkout("-b", target_branch_name, last_feature_branch)
                 if backup:
                     feature_backup_name = self._backup_name(target_branch_name)
                     logger.debug(f"Backing up target branch into {feature_backup_name}")
                     repo.git.branch("-c", feature_backup_name)
-                    self.to_push.append((feature_backup_name, self.config["target"]["remote"]))
+                    self.to_push.append(
+                        (feature_backup_name, self.config["target"]["remote"])
+                    )
                 repo.git.reset("--hard", last_feature["name"])
-                self.to_push.append((target_branch_name, self.config["target"]["remote"]))
+                self.to_push.append(
+                    (target_branch_name, self.config["target"]["remote"])
+                )
             else:
                 logger.info("All features already integrated, nothing to do")
         # Push every branch
@@ -163,7 +191,9 @@ class GUW:
             if "https://" in url:
                 branch_url = url.replace(".git", "/tree/")
             elif "git@github.com:" in url:
-                branch_url = url.replace("git@github.com:", "https://github.com/").replace(".git", "/tree/")
+                branch_url = url.replace(
+                    "git@github.com:", "https://github.com/"
+                ).replace(".git", "/tree/")
             else:
                 branch_url = ""
             li = "* "
@@ -184,19 +214,20 @@ class GUW:
                 li += f" [(Branch link)]({branch_url}{feature['name']})"
             print(li)
 
-    def add(self, backup, keep, local, folder, new_feature, new_feature_remote,
-            prev_feature):
+    def add(
+        self, backup, keep, local, folder, new_feature, new_feature_remote, prev_feature
+    ):
         # Add a new feature to the list of features found in the config file
         prev = prev_feature
         if not prev:
             prev = self.config["features"][-1]["name"]
         # Modify the configuration include this new feature
         idx = 0
-        found = False;
+        found = False
         for feature in self.config["features"]:
             if feature["name"] == prev:
                 found = True
-                break;
+                break
             idx += 1
         if not found:
             logger.critical(f"Feature {prev} not found")
@@ -250,22 +281,56 @@ def run():
     # Subparsers
     subparser = parser.add_subparsers(title="commands", dest="command", required=True)
     # Sync subcommand
-    sync_args = subparser.add_parser("sync", help="Sync the list of branches based on the configuration")
-    sync_args.add_argument("-b", "--backup", help="Generate backup branches", action="store_true")
-    sync_args.add_argument("-k", "--keep", help="Keep working folder", action="store_true")
-    sync_args.add_argument("-l", "--local", help="Don't push anything, but keep everything local", action="store_true")
-    sync_args.add_argument("-d", "--directory", help="Working directory, otherwise a new temporary directory is used.", default=None)
+    sync_args = subparser.add_parser(
+        "sync", help="Sync the list of branches based on the configuration"
+    )
+    sync_args.add_argument(
+        "-b", "--backup", help="Generate backup branches", action="store_true"
+    )
+    sync_args.add_argument(
+        "-k", "--keep", help="Keep working folder", action="store_true"
+    )
+    sync_args.add_argument(
+        "-l",
+        "--local",
+        help="Don't push anything, but keep everything local",
+        action="store_true",
+    )
+    sync_args.add_argument(
+        "-d",
+        "--directory",
+        help="Working directory, otherwise a new temporary directory is used.",
+        default=None,
+    )
     # Markdown subcommand
     markdown_args = subparser.add_parser("markdown", help="Create a markdown content")
     # Add subcommand
     add_args = subparser.add_parser("add", help="Add a new feature branch")
-    add_args.add_argument("-b", "--backup", help="Generate backup branches", action="store_true")
-    add_args.add_argument("-k", "--keep", help="Keep working folder", action="store_true")
-    add_args.add_argument("-l", "--local", help="Don't push anything, but keep everything local", action="store_true")
-    add_args.add_argument("-d", "--directory", help="Working directory, otherwise a new temporary directory is used.", default=None)
+    add_args.add_argument(
+        "-b", "--backup", help="Generate backup branches", action="store_true"
+    )
+    add_args.add_argument(
+        "-k", "--keep", help="Keep working folder", action="store_true"
+    )
+    add_args.add_argument(
+        "-l",
+        "--local",
+        help="Don't push anything, but keep everything local",
+        action="store_true",
+    )
+    add_args.add_argument(
+        "-d",
+        "--directory",
+        help="Working directory, otherwise a new temporary directory is used.",
+        default=None,
+    )
     add_args.add_argument("new_feature", help="Name of the new feature branch")
     add_args.add_argument("new_feature_remote", help="Remote for the new branch")
-    add_args.add_argument("prev_feature", help="Name of the feature the new feature should be on top of", nargs="?")
+    add_args.add_argument(
+        "prev_feature",
+        help="Name of the feature the new feature should be on top of",
+        nargs="?",
+    )
     # Remove subcommand
     add_args = subparser.add_parser("remove", help="Remove a feature")
     add_args.add_argument(
@@ -302,11 +367,18 @@ def run():
         elif args.command == "markdown":
             guw.markdown()
         elif args.command == "add":
-            guw.add(args.backup, args.keep, args.local, args.directory,
-                args.new_feature, args.new_feature_remote, args.prev_feature)
+            guw.add(
+                args.backup,
+                args.keep,
+                args.local,
+                args.directory,
+                args.new_feature,
+                args.new_feature_remote,
+                args.prev_feature,
+            )
         elif args.command == "remove":
             guw.remove(args.backup, args.keep, args.local, args.directory, args.feature)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()
