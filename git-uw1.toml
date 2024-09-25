@@ -4,25 +4,20 @@ url = "git@github.com:turran/git-upstream-workflow.git"
 
 [target]
 remote = "origin"
-branch = "final"
+branch = "example1-final"
 
 [source]
 remote = "origin"
-branch = "main"
+branch = "example1-main"
 
 [[features]]
 remote = "origin"
-name = "feature1"
-pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
-status = "merged"
-
-[[features]]
-remote = "origin"
-name = "feature2"
+name = "example1-feature1"
 pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
 status = "merging"
 
 [[features]]
 remote = "origin"
-name = "feature3"
+name = "example1-feature2"
+pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
 status = "pending"
