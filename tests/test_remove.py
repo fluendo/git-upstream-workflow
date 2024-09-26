@@ -19,22 +19,22 @@ class RemoveTestCase(unittest.TestCase):
         config = """
             [[remotes]]
             name = "origin"
-            url = "git@github.com:turran/git-upstream-workflow.git"
-            
+            url = "https://github.com/fluendo/git-upstream-workflow.git"
+
             [target]
             remote = "origin"
             branch = "example1-final"
-            
+
             [source]
             remote = "origin"
             branch = "example1-main"
-            
+
             [[features]]
             remote = "origin"
             name = "example1-feature1"
             pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
             status = "merging"
-            
+
             [[features]]
             remote = "origin"
             name = "example1-feature2"

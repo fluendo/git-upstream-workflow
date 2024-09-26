@@ -1,10 +1,12 @@
 import shutil
-import unittest
 import tempfile
-import tomli
+import unittest
+
 import git
+import tomli
 
 from guw.main import GUW
+
 
 class AddTestCase(unittest.TestCase):
     def setUp(self):
@@ -17,22 +19,22 @@ class AddTestCase(unittest.TestCase):
         config = """
             [[remotes]]
             name = "origin"
-            url = "git@github.com:turran/git-upstream-workflow.git"
-            
+            url = "https://github.com/fluendo/git-upstream-workflow.git"
+
             [target]
             remote = "origin"
             branch = "example1-final"
-            
+
             [source]
             remote = "origin"
             branch = "example1-main"
-            
+
             [[features]]
             remote = "origin"
             name = "example1-feature1"
             pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
             status = "merging"
-            
+
             [[features]]
             remote = "origin"
             name = "example1-feature2"
@@ -44,10 +46,18 @@ class AddTestCase(unittest.TestCase):
             "Add file2.txt",
             "Adding extra file",
             "Second commit",
-            "Initial commit"
+            "Initial commit",
         ]
         guw = GUW(tomli.loads(config))
-        guw.add(False, True, True, self.tmpdir, "example1-feature-to-add", "origin", "example1-feature1")
+        guw.add(
+            False,
+            True,
+            True,
+            self.tmpdir,
+            "example1-feature-to-add",
+            "origin",
+            "example1-feature1",
+        )
         # Check the proper order of the commits, like git log --pretty=%s
         repo = git.Repo(self.tmpdir)
         commits = [x.summary for x in repo.iter_commits("example1-final")]
