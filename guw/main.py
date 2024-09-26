@@ -263,6 +263,10 @@ class GUW:
             logger.critical(f"Feature {to_remove} not found")
             return
         found["status"] = "_remove"
+        # Sync it again
+        self.sync(backup, keep, local, folder)
+        # Dump the new toml
+        self.dump()
 
     def integrate(self, backup, keep, local, folder, from_branch, feature_name):
         feature = None
