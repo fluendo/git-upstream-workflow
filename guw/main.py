@@ -114,6 +114,15 @@ class GUW:
                 prev_active_feature = feature
                 prev_feature = feature
                 has_pending = True
+            elif feature["status"] == "_integrating":
+                logger.debug(
+                    f"Integrating feature {feature['name']} with {feature['integrating_from']}"
+                )
+                repo.git.rebase(feature["integrating_from"], "--autosquash")
+                self._rebase(repo, feature, prev_feature, prev_active_feature, backup)
+                prev_active_feature = feature
+                prev_feature = feature
+                has_pending = True
             elif feature["status"] == "_added":
                 logger.debug(f"Added feature {feature['name']}")
                 self._rebase(repo, feature, prev_feature, prev_active_feature, backup)
@@ -254,10 +263,22 @@ class GUW:
             logger.critical(f"Feature {to_remove} not found")
             return
         found["status"] = "_remove"
+
+    def integrate(self, backup, keep, local, folder, from_branch, feature_name):
+        feature = None
+        for f in self.config["features"]:
+            if f["name"] == feature_name:
+                feature = f
+                break
+        if not feature:
+            logger.critical(f"Feature {feature_name} not found")
+            return
+
+        feature["status"] = "_integrating"
+        feature["integrating_from"] = from_branch
+
         # Sync it again
         self.sync(backup, keep, local, folder)
-        # Dump the new toml
-        self.dump()
 
 
 def run():
@@ -352,6 +373,34 @@ def run():
         default=None,
     )
     add_args.add_argument("feature", help="Name of the feature to remove")
+    # Integrate subcommand
+    integrate_args = subparser.add_parser(
+        "integrate", help="Integrate the list of branches based on the configuration"
+    )
+    integrate_args.add_argument(
+        "-b", "--backup", help="Generate backup branches", action="store_true"
+    )
+    integrate_args.add_argument(
+        "-k", "--keep", help="Keep working folder", action="store_true"
+    )
+    integrate_args.add_argument(
+        "-l",
+        "--local",
+        help="Don't push anything, but keep everything local",
+        action="store_true",
+    )
+    integrate_args.add_argument(
+        "-d",
+        "--directory",
+        help="Working directory, otherwise a new temporary directory is used.",
+        default=None,
+    )
+    integrate_args.add_argument(
+        "from_branch", help="Name of the branch to integrate from"
+    )
+    integrate_args.add_argument(
+        "feature", help="Name of the feature to integrate with other branch"
+    )
 
     # Parse the options, if any
     args = parser.parse_args(sys.argv[1:])
@@ -378,6 +427,15 @@ def run():
             )
         elif args.command == "remove":
             guw.remove(args.backup, args.keep, args.local, args.directory, args.feature)
+        elif args.command == "integrate":
+            guw.integrate(
+                args.backup,
+                args.keep,
+                args.local,
+                args.directory,
+                args.from_branch,
+                args.feature,
+            )
 
 
 if __name__ == "__main__":
