@@ -31,6 +31,14 @@ class GUW:
         backup_name = f"{name}-{today}"
         return backup_name
 
+    def _get_feature_by_name(self, feature_name):
+        feature = None
+        for f in self.config["features"]:
+            if f["name"] == feature_name:
+                feature = f
+                break
+        return feature
+
     def _rebase(self, repo, from_ft, until_ft, to_ft, backup=False):
         until_ft_branch = f"{until_ft['remote']}/{until_ft['name']}"
         logger.debug(
@@ -100,21 +108,20 @@ class GUW:
                 logger.debug(
                     f"Feature {feature['name']} already integrated, nothing to do"
                 )
-                prev_feature = feature
-            elif feature["status"] == "merged":
+            elif feature["status"] == "_merged":
                 # When a feature (feature1) is merged, we don't really know what commits went upstream
                 # but we do know that the following feature (feature2) should only apply the commits
                 # found on feature2 and not in feature1. This will make the feature1 to be in state
                 # integrated afterwards
-                logger.debug(f"Feature {feature['name']} already merged nothing to do")
-                prev_active_feature = feature
+                logger.debug(f"Feature {feature['name']} already merged, integrating")
                 prev_feature = feature
+                feature["status"] = "integrated"
             elif feature["status"] == "merging" or feature["status"] == "pending":
                 self._rebase(repo, feature, prev_feature, prev_active_feature, backup)
                 prev_active_feature = feature
                 prev_feature = feature
                 has_pending = True
-            elif feature["status"] == "_integrating":
+            elif feature["status"] == "_updating":
                 logger.debug(
                     f"Integrating feature {feature['name']} with {feature['integrating_from']}"
                 )
@@ -170,7 +177,6 @@ class GUW:
                 logger.info("All features already integrated, nothing to do")
         # Push every branch
         self._push(repo, local)
-        # TODO generate a new .toml for features from merged to integrated
 
     def sync(self, backup, keep, local, folder):
         tmpdir = folder if folder else tempfile.mkdtemp()
@@ -208,8 +214,6 @@ class GUW:
             li = "* "
             if feature["status"] == "integrated":
                 li += "🟢"
-            elif feature["status"] == "merged":
-                li += "✅"
             elif feature["status"] == "merging":
                 li += "🔄"
             elif feature["status"] == "pending":
@@ -254,35 +258,64 @@ class GUW:
         self.dump()
 
     def remove(self, backup, keep, local, folder, to_remove):
-        found = None
-        for feature in self.config["features"]:
-            if feature["name"] == to_remove:
-                found = feature
-                break
-        if not found:
-            logger.critical(f"Feature {to_remove} not found")
+        feature = self._get_feature_by_name(to_remove)
+        if not feature:
+            logger.critical(f"Feature {feature} not found")
             return
-        found["status"] = "_remove"
+        feature["status"] = "_remove"
         # Sync it again
         self.sync(backup, keep, local, folder)
         # Dump the new toml
         self.dump()
 
-    def integrate(self, backup, keep, local, folder, from_branch, feature_name):
-        feature = None
-        for f in self.config["features"]:
-            if f["name"] == feature_name:
-                feature = f
-                break
+    def update(self, backup, keep, local, folder, from_branch, feature_name):
+        feature = self._get_feature_by_name(feature_name)
         if not feature:
             logger.critical(f"Feature {feature_name} not found")
             return
 
-        feature["status"] = "_integrating"
+        feature["status"] = "_updating"
         feature["integrating_from"] = from_branch
 
         # Sync it again
         self.sync(backup, keep, local, folder)
+
+    def integrate(self, backup, keep, local, folder, feature_name):
+        feature = self._get_feature_by_name(feature_name)
+        if not feature:
+            logger.critical(f"Feature {feature_name} not found")
+            return
+        # The feature must be in merging state
+        if feature["status"] != "merging":
+            logger.critical(f"The feature {feature_name} is not in merging state")
+            return
+        # Now the feature must be on merged to sync properly
+        feature["status"] = "_merged"
+        # Sync it again to integrate
+        self.sync(backup, keep, local, folder)
+        # Dump the new toml
+        self.dump()
+
+
+def _common_command_arguments(cmd_args):
+    cmd_args.add_argument(
+        "-b", "--backup", help="Generate backup branches", action="store_true"
+    )
+    cmd_args.add_argument(
+        "-k", "--keep", help="Keep working folder", action="store_true"
+    )
+    cmd_args.add_argument(
+        "-l",
+        "--local",
+        help="Don't push anything, but keep everything local",
+        action="store_true",
+    )
+    cmd_args.add_argument(
+        "-d",
+        "--directory",
+        help="Working directory, otherwise a new temporary directory is used.",
+        default=None,
+    )
 
 
 def run():
@@ -309,46 +342,12 @@ def run():
     sync_args = subparser.add_parser(
         "sync", help="Sync the list of branches based on the configuration"
     )
-    sync_args.add_argument(
-        "-b", "--backup", help="Generate backup branches", action="store_true"
-    )
-    sync_args.add_argument(
-        "-k", "--keep", help="Keep working folder", action="store_true"
-    )
-    sync_args.add_argument(
-        "-l",
-        "--local",
-        help="Don't push anything, but keep everything local",
-        action="store_true",
-    )
-    sync_args.add_argument(
-        "-d",
-        "--directory",
-        help="Working directory, otherwise a new temporary directory is used.",
-        default=None,
-    )
+    _common_command_arguments(sync_args)
     # Markdown subcommand
     markdown_args = subparser.add_parser("markdown", help="Create a markdown content")
     # Add subcommand
     add_args = subparser.add_parser("add", help="Add a new feature branch")
-    add_args.add_argument(
-        "-b", "--backup", help="Generate backup branches", action="store_true"
-    )
-    add_args.add_argument(
-        "-k", "--keep", help="Keep working folder", action="store_true"
-    )
-    add_args.add_argument(
-        "-l",
-        "--local",
-        help="Don't push anything, but keep everything local",
-        action="store_true",
-    )
-    add_args.add_argument(
-        "-d",
-        "--directory",
-        help="Working directory, otherwise a new temporary directory is used.",
-        default=None,
-    )
+    _common_command_arguments(add_args)
     add_args.add_argument("new_feature", help="Name of the new feature branch")
     add_args.add_argument("new_feature_remote", help="Remote for the new branch")
     add_args.add_argument(
@@ -357,54 +356,22 @@ def run():
         nargs="?",
     )
     # Remove subcommand
-    add_args = subparser.add_parser("remove", help="Remove a feature")
-    add_args.add_argument(
-        "-b", "--backup", help="Generate backup branches", action="store_true"
+    remove_args = subparser.add_parser("remove", help="Remove a feature")
+    _common_command_arguments(remove_args)
+    remove_args.add_argument("feature", help="Name of the feature to remove")
+    # Update subcommand
+    update_args = subparser.add_parser(
+        "update", help="Update a feature commits with other's branch commits"
     )
-    add_args.add_argument(
-        "-k", "--keep", help="Keep working folder", action="store_true"
+    _common_command_arguments(update_args)
+    update_args.add_argument("from_branch", help="Name of the branch to update from")
+    update_args.add_argument(
+        "feature", help="Name of the feature to update with other branch"
     )
-    add_args.add_argument(
-        "-l",
-        "--local",
-        help="Don't push anything, but keep everything local",
-        action="store_true",
-    )
-    add_args.add_argument(
-        "-d",
-        "--directory",
-        help="Working directory, otherwise a new temporary directory is used.",
-        default=None,
-    )
-    add_args.add_argument("feature", help="Name of the feature to remove")
     # Integrate subcommand
-    integrate_args = subparser.add_parser(
-        "integrate", help="Integrate the list of branches based on the configuration"
-    )
-    integrate_args.add_argument(
-        "-b", "--backup", help="Generate backup branches", action="store_true"
-    )
-    integrate_args.add_argument(
-        "-k", "--keep", help="Keep working folder", action="store_true"
-    )
-    integrate_args.add_argument(
-        "-l",
-        "--local",
-        help="Don't push anything, but keep everything local",
-        action="store_true",
-    )
-    integrate_args.add_argument(
-        "-d",
-        "--directory",
-        help="Working directory, otherwise a new temporary directory is used.",
-        default=None,
-    )
-    integrate_args.add_argument(
-        "from_branch", help="Name of the branch to integrate from"
-    )
-    integrate_args.add_argument(
-        "feature", help="Name of the feature to integrate with other branch"
-    )
+    integrate_args = subparser.add_parser("integrate", help="Integrate a feature")
+    _common_command_arguments(integrate_args)
+    integrate_args.add_argument("feature", help="Name of the feature to integrate")
 
     # Parse the options, if any
     args = parser.parse_args(sys.argv[1:])
@@ -431,14 +398,18 @@ def run():
             )
         elif args.command == "remove":
             guw.remove(args.backup, args.keep, args.local, args.directory, args.feature)
-        elif args.command == "integrate":
-            guw.integrate(
+        elif args.command == "update":
+            guw.update(
                 args.backup,
                 args.keep,
                 args.local,
                 args.directory,
                 args.from_branch,
                 args.feature,
+            )
+        elif args.command == "integrate":
+            guw.integrate(
+                args.backup, args.keep, args.local, args.directory, args.feature
             )
 
 
