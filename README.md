@@ -56,9 +56,10 @@ gitGraph TB:
 The process of generating the final branch will still be the rebasing against all feature
 branches, but feature1 is marked as "merging" in the file.
 
-Once all fixups, rebases, etc, of the feature branch going upstream are done, the branch is
-marked as "merged", so the `sync` process is done by skipping feature1 but on top
-of a new main, the one with feature1-reviewing merged.
+Once all fixups, rebases, etc, of the feature branch going upstream are done, the branch
+must be integrated back with the `integrate` command. This is done on the `sync` process
+by skipping feature1, and rebasing feature2 but on top a new main, the one with
+feature1-reviewing merged.
 
 
 ## Configuration file
@@ -89,7 +90,7 @@ status = "integrated"
 remote = "origin"
 name = "feature2"
 pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
-status = "merged"
+status = "merging"
 
 [[features]]
 remote = "origin"
@@ -121,8 +122,6 @@ Features with the same status compose groups in a strict order:
 
 1. `integrated` - already integrated, nothing to do;
 the dependant features have been rebased already and the actual feature is no longer considered in any process.
-1. `merged` - already merged, nothing to do;
-the branch has already being merged but the other features depending on this have not being rebased yet.
 1. `merging`, the branch has already opened a merge-request/pull-request
 and is waiting for the community to be reviewed
 1. `pending`, this branch is still not requested to be integrated on the upstream project.
