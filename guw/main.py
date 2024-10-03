@@ -5,6 +5,7 @@ import shutil
 import sys
 import tempfile
 from datetime import date
+from functools import cache
 
 import colorlog
 import git
@@ -19,6 +20,24 @@ formatter = colorlog.ColoredFormatter(
 
 stream_handle.setFormatter(formatter)
 logger.addHandler(stream_handle)
+
+VALID_STATUS = ["integrated", "merging", "pending"]
+
+
+@cache
+def branch_refs(repo_url):
+    g = git.Git()
+
+    return g.ls_remote("--heads", repo_url)
+
+
+def branch_exists_remote(repo_url, branch_name):
+    refs = branch_refs(repo_url)
+
+    for ref in refs.splitlines():
+        if ref.endswith(f"refs/heads/{branch_name}"):
+            return True
+    return False
 
 
 class GUW:
@@ -227,6 +246,30 @@ class GUW:
                 li += f" [(Branch link)]({branch_url}{feature['name']})"
             print(li)
 
+    def check(self):
+        remotes = {}
+        for remote in self.config["remotes"]:
+            remotes[remote["name"]] = remote["url"]
+
+        for feature in self.config["features"]:
+            remote = feature["remote"]
+
+            if feature["status"] not in VALID_STATUS:
+                logger.error(
+                    f"Invalid status for '{feature['name']}': '{feature['status']}'"
+                )
+                exit(1)
+
+            if not branch_exists_remote(
+                remotes.get(feature["remote"]), feature["name"]
+            ):
+                logger.error(
+                    f"'{feature['name']}' in '{feature['remote']}' does not exist"
+                )
+                exit(1)
+
+        logger.info(f"The toml file is correct")
+
     def add(
         self, backup, keep, local, folder, new_feature, new_feature_remote, prev_feature
     ):
@@ -345,6 +388,8 @@ def run():
     _common_command_arguments(sync_args)
     # Markdown subcommand
     markdown_args = subparser.add_parser("markdown", help="Create a markdown content")
+    # Check subcommand
+    check_args = subparser.add_parser("check", help="Check toml file is correct")
     # Add subcommand
     add_args = subparser.add_parser("add", help="Add a new feature branch")
     _common_command_arguments(add_args)
@@ -386,6 +431,8 @@ def run():
             guw.sync(args.backup, args.keep, args.local, args.directory)
         elif args.command == "markdown":
             guw.markdown()
+        elif args.command == "check":
+            guw.check()
         elif args.command == "add":
             guw.add(
                 args.backup,
