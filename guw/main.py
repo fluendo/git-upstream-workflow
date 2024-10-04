@@ -251,7 +251,7 @@ class GUW:
             nf["remote"] = new_feature_remote
             nf["status"] = "_added"
             # TODO check the existance of the remote
-            self.config["features"].insert(1, nf)
+            self.config["features"].insert(idx + 1, nf)
         # Sync it again
         self.sync(backup, keep, local, folder)
         # Dump the new toml
