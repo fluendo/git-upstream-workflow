@@ -144,7 +144,10 @@ class GUW:
                 logger.debug(
                     f"Integrating feature {feature['name']} with {feature['integrating_from']}"
                 )
-                repo.git.rebase(feature["integrating_from"], "--autosquash")
+                repo.git.rebase(feature["integrating_from"])
+                os.environ["GIT_SEQUENCE_EDITOR"] = ":"
+                repo.git.rebase("-i", prev_feature["name"], "--autosquash")
+                del os.environ["GIT_SEQUENCE_EDITOR"]
                 self._rebase(repo, feature, prev_feature, prev_active_feature, backup)
                 prev_active_feature = feature
                 prev_feature = feature
