@@ -427,40 +427,47 @@ def run():
     logger.setLevel(level)
 
     # Parse the config file
-    with open(args.config, "rb") as fconfig:
-        config = tomli.load(fconfig)
-        guw = GUW(config)
-        if args.command == "sync":
-            guw.sync(args.backup, args.keep, args.local, args.directory)
-        elif args.command == "markdown":
-            guw.markdown()
-        elif args.command == "check":
-            guw.check()
-        elif args.command == "add":
-            guw.add(
-                args.backup,
-                args.keep,
-                args.local,
-                args.directory,
-                args.new_feature,
-                args.new_feature_remote,
-                args.prev_feature,
-            )
-        elif args.command == "remove":
-            guw.remove(args.backup, args.keep, args.local, args.directory, args.feature)
-        elif args.command == "update":
-            guw.update(
-                args.backup,
-                args.keep,
-                args.local,
-                args.directory,
-                args.from_branch,
-                args.feature,
-            )
-        elif args.command == "integrate":
-            guw.integrate(
-                args.backup, args.keep, args.local, args.directory, args.feature
-            )
+
+    try:
+        with open(args.config, "rb") as fconfig:
+            config = tomli.load(fconfig)
+    except FileNotFoundError:
+        logger.error(f"Error opening file: {args.config}")
+        exit(2)
+    except tomli.TOMLDecodeError:
+        logger.error(f"Error processing TOML file: {args.config}")
+        exit(2)
+
+    guw = GUW(config)
+    if args.command == "sync":
+        guw.sync(args.backup, args.keep, args.local, args.directory)
+    elif args.command == "markdown":
+        guw.markdown()
+    elif args.command == "check":
+        guw.check()
+    elif args.command == "add":
+        guw.add(
+            args.backup,
+            args.keep,
+            args.local,
+            args.directory,
+            args.new_feature,
+            args.new_feature_remote,
+            args.prev_feature,
+        )
+    elif args.command == "remove":
+        guw.remove(args.backup, args.keep, args.local, args.directory, args.feature)
+    elif args.command == "update":
+        guw.update(
+            args.backup,
+            args.keep,
+            args.local,
+            args.directory,
+            args.from_branch,
+            args.feature,
+        )
+    elif args.command == "integrate":
+        guw.integrate(args.backup, args.keep, args.local, args.directory, args.feature)
 
 
 if __name__ == "__main__":
