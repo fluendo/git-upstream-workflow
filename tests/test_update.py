@@ -18,7 +18,7 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-class AddTestCase(unittest.TestCase):
+class UpdateTestCase(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
         # Setup git to have a proper user and email
@@ -42,7 +42,7 @@ class AddTestCase(unittest.TestCase):
     def cleanUp(self):
         shutil.rmtree(self.tmpdir)
 
-    def test_add(self):
+    def test_update(self):
         config = """
             [[remotes]]
             name = "origin"

@@ -50,26 +50,47 @@ class GUW:
         backup_name = f"{name}-{today}"
         return backup_name
 
+    def _get_upstream_feature(self):
+        return {
+            "remote": self.config["source"]["remote"],
+            "name": self.config["source"]["branch"],
+        }
+
     def _get_feature_by_name(self, feature_name):
         feature = None
+        idx = 0
         for f in self.config["features"]:
             if f["name"] == feature_name:
                 feature = f
                 break
-        return feature
+            idx = idx + 1
+        return feature, idx
+
+    def _backup_feature(self, repo, feature, backup=False):
+        if not backup:
+            return
+        feature_backup_name = self._backup_name(feature["name"])
+        logger.debug(f"Backing up {from_ft['name']} into {feature_backup_name}")
+        repo.git.branch("-c", feature_backup_name)
+        self.to_push.append((feature_backup_name, feature["remote"]))
 
     def _rebase(self, repo, from_ft, until_ft, to_ft, backup=False):
         until_ft_branch = f"{until_ft['remote']}/{until_ft['name']}"
         logger.debug(
             f"Rebasing {from_ft['name']} onto {to_ft['name']} until {until_ft_branch}"
         )
-        if backup:
-            feature_backup_name = self._backup_name(from_ft["name"])
-            logger.debug(f"Backing up {from_ft['name']} into {feature_backup_name}")
-            repo.git.branch("-c", feature_backup_name)
-            self.to_push.append((feature_backup_name, from_ft["remote"]))
+        self._backup_feature(repo, from_ft)
         # Ok, let's rebase on top of the to_ft
-        repo.git.rebase("--onto", to_ft["name"], until_ft_branch, from_ft["name"])
+        os.environ["GIT_SEQUENCE_EDITOR"] = ":"
+        repo.git.rebase(
+            "-i",
+            "--autosquash",
+            "--onto",
+            to_ft["name"],
+            until_ft_branch,
+            from_ft["name"],
+        )
+        del os.environ["GIT_SEQUENCE_EDITOR"]
         self.to_push.append((from_ft["name"], from_ft["remote"]))
 
     def _push(self, repo, local):
@@ -79,18 +100,17 @@ class GUW:
                 repo.git.push("-f", remote, branch)
         self.to_push = []
 
-    def _sync_at(self, tmpdir, backup, local):
+    def _sync_at(self, tmpdir, backup, local, features, prev_feature):
         logger.info(f"Work directory at {tmpdir}")
-
         # Fetch the source branch
-        source_remote = self.config["source"]["remote"]
+        source_remote = prev_feature["remote"]
         source_url = [
             x["url"] for x in self.config["remotes"] if x["name"] == source_remote
         ][0]
         repo = git.Repo.clone_from(
             source_url,
             tmpdir,
-            branch=self.config["source"]["branch"],
+            branch=prev_feature["name"],
             multi_options=[f"--origin={source_remote}"],
         )
         # Add the remotes
@@ -102,14 +122,10 @@ class GUW:
                 r = repo.create_remote(remote["name"], remote["url"])
                 logger.debug(f"Fetching remote {remote['name']}")
                 r.fetch()
-        prev_feature = {
-            "remote": self.config["source"]["remote"],
-            "name": self.config["source"]["branch"],
-        }
         # Keep track of the features but the integrated ones
         prev_active_feature = prev_feature
         has_pending = False
-        for feature in self.config["features"]:
+        for feature in features:
             logger.info(
                 f"Syncing feature {feature['name']} with previous active {prev_active_feature['name']}"
             )
@@ -142,12 +158,12 @@ class GUW:
                 has_pending = True
             elif feature["status"] == "_updating":
                 logger.debug(
-                    f"Integrating feature {feature['name']} with {feature['integrating_from']}"
+                    f"Updating feature {feature['name']} with {feature['integrating_from']}"
                 )
-                repo.git.rebase(feature["integrating_from"])
-                os.environ["GIT_SEQUENCE_EDITOR"] = ":"
-                repo.git.rebase("-i", prev_feature["name"], "--autosquash")
-                del os.environ["GIT_SEQUENCE_EDITOR"]
+                # Backup the feature before updating
+                self._backup_feature(repo, feature)
+                # Use the new branch to integrate from
+                repo.git.reset("--hard", feature["integrating_from"])
                 self._rebase(repo, feature, prev_feature, prev_active_feature, backup)
                 prev_active_feature = feature
                 prev_feature = feature
@@ -200,11 +216,13 @@ class GUW:
         # Push every branch
         self._push(repo, local)
 
-    def sync(self, backup, keep, local, folder):
+    def _sync(self, backup, keep, local, folder, features=None, prev_feature=None):
+        features = features if features else self.config.features
+        prev_feature = prev_feature if prev_feature else self._get_upstream_feature()
         tmpdir = folder if folder else tempfile.mkdtemp()
         exception = None
         try:
-            self._sync_at(tmpdir, backup, local)
+            self._sync_at(tmpdir, backup, local, features, prev_feature)
         except git.exc.GitCommandError as e:
             exception = e
         if not keep:
@@ -214,6 +232,9 @@ class GUW:
             print(exception.stdout, file=sys.stdout)
             print(exception.stderr, file=sys.stderr)
             exit(1)
+
+    def sync(self, backup, keep, local, folder):
+        self._sync(backup, keep, local, folder)
 
     def dump(self):
         print(tomli_w.dumps(self.config))
@@ -274,60 +295,80 @@ class GUW:
         logger.info(f"The toml file is correct")
 
     def add(
-        self, backup, keep, local, folder, new_feature, new_feature_remote, prev_feature
+        self,
+        backup,
+        keep,
+        local,
+        folder,
+        new_feature,
+        new_feature_remote,
+        prev_feature_name,
     ):
         # Add a new feature to the list of features found in the config file
-        prev = prev_feature
-        if not prev:
-            prev = self.config["features"][-1]["name"]
-        # Modify the configuration include this new feature
-        idx = 0
-        found = False
-        for feature in self.config["features"]:
-            if feature["name"] == prev:
-                found = True
-                break
-            idx += 1
-        if not found:
-            logger.critical(f"Feature {prev} not found")
-            return
+        if not prev_feature_name:
+            prev_feature = self.self.config["features"][-1]["name"]
+            idx = len(self.config["features"]) - 1
         else:
-            nf = {}
-            nf["name"] = new_feature
-            nf["remote"] = new_feature_remote
-            nf["status"] = "_added"
-            # TODO check the existance of the remote
-            self.config["features"].insert(idx + 1, nf)
+            prev_feature, idx = self._get_feature_by_name(prev_feature_name)
+            if not prev_feature:
+                logger.critical(f"Feature {prev_feature_name} not found")
+                return
+        # Modify the configuration to include this new feature
+        nf = {}
+        nf["name"] = new_feature
+        nf["remote"] = new_feature_remote
+        nf["status"] = "_added"
+        # TODO check the existance of the remote
+        self.config["features"].insert(idx + 1, nf)
         # Sync it again
-        self.sync(backup, keep, local, folder)
+        self._sync(
+            backup,
+            keep,
+            local,
+            folder,
+            self.config["features"][idx + 1 :],
+            prev_feature,
+        )
         # Dump the new toml
         self.dump()
 
     def remove(self, backup, keep, local, folder, to_remove):
-        feature = self._get_feature_by_name(to_remove)
+        feature, idx = self._get_feature_by_name(to_remove)
         if not feature:
             logger.critical(f"Feature {feature} not found")
             return
+        if not idx:
+            prev_feature = self._get_upstream_feature()
+        else:
+            prev_feature = self.config["features"][idx - 1]
         feature["status"] = "_remove"
         # Sync it again
-        self.sync(backup, keep, local, folder)
+        self._sync(
+            backup, keep, local, folder, self.config["features"][idx:], prev_feature
+        )
         # Dump the new toml
         self.dump()
 
     def update(self, backup, keep, local, folder, from_branch, feature_name):
-        feature = self._get_feature_by_name(feature_name)
+        feature, idx = self._get_feature_by_name(feature_name)
         if not feature:
             logger.critical(f"Feature {feature_name} not found")
             return
+        if not idx:
+            prev_feature = self._get_upstream_feature()
+        else:
+            prev_feature = self.config["features"][idx - 1]
 
         feature["status"] = "_updating"
         feature["integrating_from"] = from_branch
 
         # Sync it again
-        self.sync(backup, keep, local, folder)
+        self._sync(
+            backup, keep, local, folder, self.config["features"][idx:], prev_feature
+        )
 
     def integrate(self, backup, keep, local, folder, feature_name):
-        feature = self._get_feature_by_name(feature_name)
+        feature, idx = self._get_feature_by_name(feature_name)
         if not feature:
             logger.critical(f"Feature {feature_name} not found")
             return
@@ -335,10 +376,16 @@ class GUW:
         if feature["status"] != "merging":
             logger.critical(f"The feature {feature_name} is not in merging state")
             return
+        if not idx:
+            prev_feature = self._get_upstream_feature()
+        else:
+            prev_feature = self.config["features"][idx - 1]
         # Now the feature must be on merged to sync properly
         feature["status"] = "_merged"
         # Sync it again to integrate
-        self.sync(backup, keep, local, folder)
+        self._sync(
+            backup, keep, local, folder, self.config["features"][idx:], prev_feature
+        )
         # Dump the new toml
         self.dump()
 
