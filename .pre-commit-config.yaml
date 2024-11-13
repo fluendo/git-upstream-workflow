@@ -4,15 +4,10 @@ repos:
     hooks:
       - id: sync_with_poetry
 
-  # python import sorting - will amend files
-  - repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.9.3
+  # ruff - lint and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.3
     hooks:
-      - id: isort
-
-  # black - formatting
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
-    hooks:
-      - id: black
-
+      - id: ruff
+        args: [ --fix, --show-fixes ]
+      - id: ruff-format
