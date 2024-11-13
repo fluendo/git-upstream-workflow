@@ -217,7 +217,7 @@ class GUW:
         self._push(repo, local)
 
     def _sync(self, backup, keep, local, folder, features=None, prev_feature=None):
-        features = features if features else self.config.features
+        features = features if features else self.config["features"]
         prev_feature = prev_feature if prev_feature else self._get_upstream_feature()
         tmpdir = folder if folder else tempfile.mkdtemp()
         exception = None
