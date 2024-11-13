@@ -8,7 +8,7 @@ import tomli
 from guw.main import GUW
 
 
-class RemoveTestCase(unittest.TestCase):
+class SyncTestCase(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
         # Setup git to have a proper user and email
@@ -32,7 +32,7 @@ class RemoveTestCase(unittest.TestCase):
     def cleanUp(self):
         shutil.rmtree(self.tmpdir)
 
-    def test_remove(self):
+    def test_sync(self):
         config = """
             [[remotes]]
             name = "origin"
@@ -58,9 +58,19 @@ class RemoveTestCase(unittest.TestCase):
             pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
             status = "pending"
         """
-        expected_commits = ["Second commit", "Initial commit"]
+        expected_commits = [
+            "Modify file1.txt",
+            "Add file2.txt",
+            "Second commit",
+            "Initial commit",
+        ]
         guw = GUW(tomli.loads(config))
-        guw.remove(False, True, True, self.tmpdir, "example1-feature2")
+        guw.sync(
+            False,
+            True,
+            True,
+            self.tmpdir,
+        )
         repo = git.Repo(self.tmpdir)
         # Check the proper order of the commits, like git log --pretty=%s
         commits = [x.summary for x in repo.iter_commits("example1-final")]
