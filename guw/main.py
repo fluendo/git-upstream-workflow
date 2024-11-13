@@ -70,7 +70,7 @@ class GUW:
         if not backup:
             return
         feature_backup_name = self._backup_name(feature["name"])
-        logger.debug(f"Backing up {from_ft['name']} into {feature_backup_name}")
+        logger.debug(f"Backing up {feature['name']} into {feature_backup_name}")
         repo.git.branch("-c", feature_backup_name)
         self.to_push.append((feature_backup_name, feature["remote"]))
 
@@ -292,7 +292,7 @@ class GUW:
                 )
                 exit(1)
 
-        logger.info(f"The toml file is correct")
+        logger.info("The toml file is correct")
 
     def add(
         self,
@@ -437,9 +437,9 @@ def run():
     )
     _common_command_arguments(sync_args)
     # Markdown subcommand
-    markdown_args = subparser.add_parser("markdown", help="Create a markdown content")
+    subparser.add_parser("markdown", help="Create a markdown content")
     # Check subcommand
-    check_args = subparser.add_parser("check", help="Check toml file is correct")
+    subparser.add_parser("check", help="Check toml file is correct")
     # Add subcommand
     add_args = subparser.add_parser("add", help="Add a new feature branch")
     _common_command_arguments(add_args)
