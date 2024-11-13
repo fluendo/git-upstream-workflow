@@ -306,7 +306,7 @@ class GUW:
     ):
         # Add a new feature to the list of features found in the config file
         if not prev_feature_name:
-            prev_feature = self.self.config["features"][-1]["name"]
+            prev_feature = self.config["features"][-1]["name"]
             idx = len(self.config["features"]) - 1
         else:
             prev_feature, idx = self._get_feature_by_name(prev_feature_name)
