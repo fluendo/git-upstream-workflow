@@ -76,9 +76,7 @@ class GUW:
 
     def _rebase(self, repo, from_ft, until_ft, to_ft, backup=False):
         until_ft_branch = f"{until_ft['remote']}/{until_ft['name']}"
-        logger.debug(
-            f"Rebasing {from_ft['name']} onto {to_ft['name']} until {until_ft_branch}"
-        )
+        logger.debug(f"Rebasing {from_ft['name']} onto {to_ft['name']} until {until_ft_branch}")
         self._backup_feature(repo, from_ft)
         # Ok, let's rebase on top of the to_ft
         os.environ["GIT_SEQUENCE_EDITOR"] = ":"
@@ -104,9 +102,7 @@ class GUW:
         logger.info(f"Work directory at {tmpdir}")
         # Fetch the source branch
         source_remote = prev_feature["remote"]
-        source_url = [
-            x["url"] for x in self.config["remotes"] if x["name"] == source_remote
-        ][0]
+        source_url = [x["url"] for x in self.config["remotes"] if x["name"] == source_remote][0]
         repo = git.Repo.clone_from(
             source_url,
             tmpdir,
@@ -126,9 +122,7 @@ class GUW:
         prev_active_feature = prev_feature
         has_pending = False
         for feature in features:
-            logger.info(
-                f"Syncing feature {feature['name']} with previous active {prev_active_feature['name']}"
-            )
+            logger.info(f"Syncing feature {feature['name']} with previous active {prev_active_feature['name']}")
             # Checkout the remote branch
             feature_branch = f"{feature['remote']}/{feature['name']}"
             logger.debug(f"Creating local branch {feature_branch}")
@@ -136,13 +130,9 @@ class GUW:
             # Check the status to know how to proceed
             if feature["status"] == "integrated":
                 if has_pending:
-                    logger.critical(
-                        f"Feature {feature['name']} marked as integrated but after a pending feature"
-                    )
+                    logger.critical(f"Feature {feature['name']} marked as integrated but after a pending feature")
                     return
-                logger.debug(
-                    f"Feature {feature['name']} already integrated, nothing to do"
-                )
+                logger.debug(f"Feature {feature['name']} already integrated, nothing to do")
             elif feature["status"] == "_merged":
                 # When a feature (feature1) is merged, we don't really know what commits went upstream
                 # but we do know that the following feature (feature2) should only apply the commits
@@ -157,9 +147,7 @@ class GUW:
                 prev_feature = feature
                 has_pending = True
             elif feature["status"] == "_updating":
-                logger.debug(
-                    f"Updating feature {feature['name']} with {feature['integrating_from']}"
-                )
+                logger.debug(f"Updating feature {feature['name']} with {feature['integrating_from']}")
                 # Backup the feature before updating
                 self._backup_feature(repo, feature)
                 # Use the new branch to integrate from
@@ -182,35 +170,25 @@ class GUW:
                 # rebase on top of the previous one
                 prev_feature = feature
             else:
-                logger.critical(
-                    f"Feature {feature['name']} has unknown status: '{feature['status']}'"
-                )
+                logger.critical(f"Feature {feature['name']} has unknown status: '{feature['status']}'")
                 return
         # Now remove every feature that must be removed
-        self.config["features"] = [
-            f for f in self.config["features"] if f["status"] != "_remove"
-        ]
+        self.config["features"] = [f for f in self.config["features"] if f["status"] != "_remove"]
         # Make target branch be the last feature
         last_feature = self.config["features"][-1]
         if last_feature:
             if last_feature["status"] != "integrated":
                 target_branch_name = self.config["target"]["branch"]
                 last_feature_branch = f"{last_feature['remote']}/{last_feature['name']}"
-                logger.info(
-                    f"Making target branch {target_branch_name} based on {last_feature_branch}"
-                )
+                logger.info(f"Making target branch {target_branch_name} based on {last_feature_branch}")
                 repo.git.checkout("-b", target_branch_name, last_feature_branch)
                 if backup:
                     feature_backup_name = self._backup_name(target_branch_name)
                     logger.debug(f"Backing up target branch into {feature_backup_name}")
                     repo.git.branch("-c", feature_backup_name)
-                    self.to_push.append(
-                        (feature_backup_name, self.config["target"]["remote"])
-                    )
+                    self.to_push.append((feature_backup_name, self.config["target"]["remote"]))
                 repo.git.reset("--hard", last_feature["name"])
-                self.to_push.append(
-                    (target_branch_name, self.config["target"]["remote"])
-                )
+                self.to_push.append((target_branch_name, self.config["target"]["remote"]))
             else:
                 logger.info("All features already integrated, nothing to do")
         # Push every branch
@@ -249,9 +227,7 @@ class GUW:
             if "https://" in url:
                 branch_url = url.replace(".git", "/tree/")
             elif "git@github.com:" in url:
-                branch_url = url.replace(
-                    "git@github.com:", "https://github.com/"
-                ).replace(".git", "/tree/")
+                branch_url = url.replace("git@github.com:", "https://github.com/").replace(".git", "/tree/")
             else:
                 branch_url = ""
             li = "* "
@@ -279,17 +255,11 @@ class GUW:
             remote = feature["remote"]
 
             if feature["status"] not in VALID_STATUS:
-                logger.error(
-                    f"Invalid status for '{feature['name']}': '{feature['status']}'"
-                )
+                logger.error(f"Invalid status for '{feature['name']}': '{feature['status']}'")
                 exit(1)
 
-            if not branch_exists_remote(
-                remotes.get(feature["remote"]), feature["name"]
-            ):
-                logger.error(
-                    f"'{feature['name']}' in '{feature['remote']}' does not exist"
-                )
+            if not branch_exists_remote(remotes.get(feature["remote"]), feature["name"]):
+                logger.error(f"'{feature['name']}' in '{feature['remote']}' does not exist")
                 exit(1)
 
         logger.info("The toml file is correct")
@@ -343,9 +313,7 @@ class GUW:
             prev_feature = self.config["features"][idx - 1]
         feature["status"] = "_remove"
         # Sync it again
-        self._sync(
-            backup, keep, local, folder, self.config["features"][idx:], prev_feature
-        )
+        self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature)
         # Dump the new toml
         self.dump()
 
@@ -363,9 +331,7 @@ class GUW:
         feature["integrating_from"] = from_branch
 
         # Sync it again
-        self._sync(
-            backup, keep, local, folder, self.config["features"][idx:], prev_feature
-        )
+        self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature)
 
     def integrate(self, backup, keep, local, folder, feature_name):
         feature, idx = self._get_feature_by_name(feature_name)
@@ -383,20 +349,14 @@ class GUW:
         # Now the feature must be on merged to sync properly
         feature["status"] = "_merged"
         # Sync it again to integrate
-        self._sync(
-            backup, keep, local, folder, self.config["features"][idx:], prev_feature
-        )
+        self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature)
         # Dump the new toml
         self.dump()
 
 
 def _common_command_arguments(cmd_args):
-    cmd_args.add_argument(
-        "-b", "--backup", help="Generate backup branches", action="store_true"
-    )
-    cmd_args.add_argument(
-        "-k", "--keep", help="Keep working folder", action="store_true"
-    )
+    cmd_args.add_argument("-b", "--backup", help="Generate backup branches", action="store_true")
+    cmd_args.add_argument("-k", "--keep", help="Keep working folder", action="store_true")
     cmd_args.add_argument(
         "-l",
         "--local",
@@ -432,9 +392,7 @@ def run():
     # Subparsers
     subparser = parser.add_subparsers(title="commands", dest="command", required=True)
     # Sync subcommand
-    sync_args = subparser.add_parser(
-        "sync", help="Sync the list of branches based on the configuration"
-    )
+    sync_args = subparser.add_parser("sync", help="Sync the list of branches based on the configuration")
     _common_command_arguments(sync_args)
     # Markdown subcommand
     subparser.add_parser("markdown", help="Create a markdown content")
@@ -455,14 +413,10 @@ def run():
     _common_command_arguments(remove_args)
     remove_args.add_argument("feature", help="Name of the feature to remove")
     # Update subcommand
-    update_args = subparser.add_parser(
-        "update", help="Update a feature commits with other's branch commits"
-    )
+    update_args = subparser.add_parser("update", help="Update a feature commits with other's branch commits")
     _common_command_arguments(update_args)
     update_args.add_argument("from_branch", help="Name of the branch to update from")
-    update_args.add_argument(
-        "feature", help="Name of the feature to update with other branch"
-    )
+    update_args.add_argument("feature", help="Name of the feature to update with other branch")
     # Integrate subcommand
     integrate_args = subparser.add_parser("integrate", help="Integrate a feature")
     _common_command_arguments(integrate_args)
