@@ -4,7 +4,7 @@ import os
 import shutil
 import sys
 import tempfile
-from datetime import date
+from datetime import datetime
 from functools import cache
 
 import colorlog
@@ -46,8 +46,8 @@ class GUW:
         self.to_push = []
 
     def _backup_name(self, name):
-        today = str(date.today())
-        backup_name = f"{name}-{today}"
+        now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        backup_name = f"{name}-{now}"
         return backup_name
 
     def _get_upstream_feature(self):
