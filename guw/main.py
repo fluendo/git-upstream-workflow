@@ -51,6 +51,15 @@ class GUW:
         return backup_name
 
     def _get_upstream_feature(self):
+        if "upstream" not in self.config:
+            return self._get_source_feature()
+
+        return {
+            "remote": self.config["upstream"]["remote"],
+            "name": self.config["upstream"]["branch"],
+        }
+
+    def _get_source_feature(self):
         return {
             "remote": self.config["source"]["remote"],
             "name": self.config["source"]["branch"],
@@ -194,9 +203,12 @@ class GUW:
         # Push every branch
         self._push(repo, local)
 
-    def _sync(self, backup, keep, local, folder, features=None, prev_feature=None):
+    def _sync(self, backup, keep, local, folder, features=None, prev_feature=None, from_upstream=False):
         features = features if features else self.config["features"]
-        prev_feature = prev_feature if prev_feature else self._get_upstream_feature()
+        if prev_feature:
+            prev_feature = prev_feature
+        else:
+            prev_feature = self._get_upstream_feature() if from_upstream else self._get_source_feature()
         tmpdir = folder if folder else tempfile.mkdtemp()
         exception = None
         try:
@@ -212,7 +224,7 @@ class GUW:
             exit(1)
 
     def sync(self, backup, keep, local, folder):
-        self._sync(backup, keep, local, folder)
+        self._sync(backup, keep, local, folder, from_upstream=True)
 
     def dump(self):
         print(tomli_w.dumps(self.config))
@@ -308,7 +320,7 @@ class GUW:
             logger.critical(f"Feature {feature} not found")
             return
         if not idx:
-            prev_feature = self._get_upstream_feature()
+            prev_feature = self._get_source_feature()
         else:
             prev_feature = self.config["features"][idx - 1]
         feature["status"] = "_remove"
@@ -323,7 +335,7 @@ class GUW:
             logger.critical(f"Feature {feature_name} not found")
             return
         if not idx:
-            prev_feature = self._get_upstream_feature()
+            prev_feature = self._get_source_feature()
         else:
             prev_feature = self.config["features"][idx - 1]
 
@@ -343,7 +355,7 @@ class GUW:
             logger.critical(f"The feature {feature_name} is not in merging state")
             return
         if not idx:
-            prev_feature = self._get_upstream_feature()
+            prev_feature = self._get_source_feature()
         else:
             prev_feature = self.config["features"][idx - 1]
         # Now the feature must be on merged to sync properly
