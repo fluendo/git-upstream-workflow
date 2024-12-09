@@ -107,9 +107,18 @@ status = "pending"
 The configuration must include the list of remotes under the `[[remotes]]` section. This is useful
 when the upstream branch is done in a git provider like GitLab but the development is done in GitHub.
 
-There are two special sections, `[source]` and `[target]`. The `[source]` section defines the branch
-the project you want to contribute to uses as the main stable branch.  The `[target]` section defines
-the branch that should hold all the features.
+There are three special sections, `[source]`, `[target]` and `[upstream]`:
+
+* The `[source]` section defines the branch you want to apply your features into.
+
+* The `[target]` section defines the branch that should hold all the features after applying them
+  into `[source]`.
+
+* The `[upstream]` is optional and defines the branch of the project you want to contribute to. The goal of
+  having two destination base branches, `[source]` and `[upstream]`, is to differentiate the `sync` process
+  from other operations. When `syncing` all features are applied into `[upstream]` because you want to sync
+  with upstream changes and apply yours on top. All other operations use the `[source]` section to continue
+  making modifications on the feature list. If `[upstream]` is not defined, `[source]` will be used.
 
 The `[[features]]` section defines the list of features you want to include upstream (the `target` branch).
 Each feature has the following key/value pairs:
