@@ -42,9 +42,13 @@ class IntegrateTestCase(unittest.TestCase):
             remote = "origin"
             branch = "example1-final"
 
+            [upstream]
+            remote = "origin"
+            branch = "example1-upstream"
+
             [source]
             remote = "origin"
-            branch = "example1-main-feature1"
+            branch = "example1-main"
 
             [[features]]
             remote = "origin"
@@ -58,9 +62,15 @@ class IntegrateTestCase(unittest.TestCase):
             pr = "https://github/fluendo/git-upstream-workflow/pull-requests/10"
             status = "pending"
         """
-        expected_commits = [
+        expected_commits_example1_final = [
             "Modify file1.txt",
             "Add file2.txt",
+            "Commit after upstream review",
+            "Second commit",
+            "Initial commit",
+        ]
+        expected_commits_example1_main = [
+            "Commit after upstream review",
             "Second commit",
             "Initial commit",
         ]
@@ -73,6 +83,9 @@ class IntegrateTestCase(unittest.TestCase):
             "example1-feature1",
         )
         repo = git.Repo(self.tmpdir)
-        # Check the proper order of the commits, like git log --pretty=%s
+        # Target must have upstream plus feature2
         commits = [x.summary for x in repo.iter_commits("example1-final")]
-        self.assertEqual(commits, expected_commits)
+        self.assertEqual(commits, expected_commits_example1_final)
+        # Source must have upstream
+        commits = [x.summary for x in repo.iter_commits("example1-main")]
+        self.assertEqual(commits, expected_commits_example1_main)
