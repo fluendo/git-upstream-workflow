@@ -98,7 +98,7 @@ class GUW:
     def _rebase(self, repo, from_ft, until_ft, to_ft, backup=False):
         until_ft_branch = f"{until_ft['remote']}/{until_ft['name']}"
         logger.debug(f"Rebasing {from_ft['name']} onto {to_ft['name']} until {until_ft_branch}")
-        self._backup_feature(repo, from_ft)
+        self._backup_feature(repo, from_ft, backup)
         # Ok, let's rebase on top of the to_ft
         os.environ["GIT_SEQUENCE_EDITOR"] = ":"
         repo.git.rebase(
@@ -173,7 +173,7 @@ class GUW:
             elif feature["status"] == "_updating":
                 logger.debug(f"Updating feature {feature['name']} with {feature['integrating_from']}")
                 # Backup the feature before updating
-                self._backup_feature(repo, feature)
+                self._backup_feature(repo, feature, backup)
                 # Use the new branch to integrate from
                 repo.git.reset("--hard", feature["integrating_from"])
                 self._rebase(repo, feature, prev_feature, prev_active_feature, backup)
