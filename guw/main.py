@@ -121,6 +121,11 @@ class GUW:
                 repo.git.push("-f", remote, branch)
         self.to_push = []
 
+    def _checkout(self, repo, feature):
+        feature_branch = f"{feature['remote']}/{feature['name']}"
+        logger.debug(f"Creating local branch {feature_branch}")
+        repo.git.checkout("-b", feature["name"], feature_branch)
+
     def _sync_at(self, tmpdir, backup, local, features, prev_feature):
         logger.info(f"Work directory at {tmpdir}")
         # Fetch the source branch
@@ -148,9 +153,8 @@ class GUW:
         for feature in features:
             logger.info(f"Syncing feature {feature['name']} with previous active {prev_active_feature['name']}")
             # Checkout the remote branch
-            feature_branch = f"{feature['remote']}/{feature['name']}"
-            logger.debug(f"Creating local branch {feature_branch}")
-            repo.git.checkout("-b", feature["name"], feature_branch)
+            if feature["status"] != "integrated":
+                self._checkout(repo, feature)
             # Check the status to know how to proceed
             if feature["status"] == "integrated":
                 if has_pending:
