@@ -65,6 +65,18 @@ class GUW:
             "name": self.config["source"]["branch"],
         }
 
+    def _get_target_feature(self):
+        return {
+            "remote": self.config["target"]["remote"],
+            "name": self.config["target"]["branch"],
+        }
+
+    def _upstream_is_source(self):
+        if "upstream" not in self.config:
+            return True
+        else:
+            return False
+
     def _get_feature_by_name(self, feature_name):
         feature = None
         idx = 0
@@ -86,7 +98,7 @@ class GUW:
     def _rebase(self, repo, from_ft, until_ft, to_ft, backup=False):
         until_ft_branch = f"{until_ft['remote']}/{until_ft['name']}"
         logger.debug(f"Rebasing {from_ft['name']} onto {to_ft['name']} until {until_ft_branch}")
-        self._backup_feature(repo, from_ft)
+        self._backup_feature(repo, from_ft, backup)
         # Ok, let's rebase on top of the to_ft
         os.environ["GIT_SEQUENCE_EDITOR"] = ":"
         repo.git.rebase(
@@ -101,21 +113,29 @@ class GUW:
         self.to_push.append((from_ft["name"], from_ft["remote"]))
 
     def _push(self, repo, local):
-        if not local:
-            for branch, remote in self.to_push:
+        for branch, remote in self.to_push:
+            if local:
+                logger.debug(f"Should push {branch} to {remote}")
+            else:
                 logger.debug(f"Pushing {branch} to {remote}")
                 repo.git.push("-f", remote, branch)
         self.to_push = []
+
+    def _checkout(self, repo, feature):
+        feature_branch = f"{feature['remote']}/{feature['name']}"
+        logger.debug(f"Creating local branch {feature_branch}")
+        repo.git.checkout("-b", feature["name"], feature_branch)
 
     def _sync_at(self, tmpdir, backup, local, features, prev_feature):
         logger.info(f"Work directory at {tmpdir}")
         # Fetch the source branch
         source_remote = prev_feature["remote"]
+        source_name = prev_feature["name"]
         source_url = [x["url"] for x in self.config["remotes"] if x["name"] == source_remote][0]
         repo = git.Repo.clone_from(
             source_url,
             tmpdir,
-            branch=prev_feature["name"],
+            branch=source_name,
             multi_options=[f"--origin={source_remote}"],
         )
         # Add the remotes
@@ -133,9 +153,8 @@ class GUW:
         for feature in features:
             logger.info(f"Syncing feature {feature['name']} with previous active {prev_active_feature['name']}")
             # Checkout the remote branch
-            feature_branch = f"{feature['remote']}/{feature['name']}"
-            logger.debug(f"Creating local branch {feature_branch}")
-            repo.git.checkout("-b", feature["name"], feature_branch)
+            if feature["status"] != "integrated":
+                self._checkout(repo, feature)
             # Check the status to know how to proceed
             if feature["status"] == "integrated":
                 if has_pending:
@@ -158,7 +177,7 @@ class GUW:
             elif feature["status"] == "_updating":
                 logger.debug(f"Updating feature {feature['name']} with {feature['integrating_from']}")
                 # Backup the feature before updating
-                self._backup_feature(repo, feature)
+                self._backup_feature(repo, feature, backup)
                 # Use the new branch to integrate from
                 repo.git.reset("--hard", feature["integrating_from"])
                 self._rebase(repo, feature, prev_feature, prev_active_feature, backup)
@@ -187,27 +206,45 @@ class GUW:
         last_feature = self.config["features"][-1]
         if last_feature:
             if last_feature["status"] != "integrated":
-                target_branch_name = self.config["target"]["branch"]
-                last_feature_branch = f"{last_feature['remote']}/{last_feature['name']}"
-                logger.info(f"Making target branch {target_branch_name} based on {last_feature_branch}")
-                repo.git.checkout("-b", target_branch_name, last_feature_branch)
-                if backup:
-                    feature_backup_name = self._backup_name(target_branch_name)
-                    logger.debug(f"Backing up target branch into {feature_backup_name}")
-                    repo.git.branch("-c", feature_backup_name)
-                    self.to_push.append((feature_backup_name, self.config["target"]["remote"]))
-                repo.git.reset("--hard", last_feature["name"])
-                self.to_push.append((target_branch_name, self.config["target"]["remote"]))
+                self._copy(repo, last_feature, self._get_target_feature(), backup)
             else:
                 logger.info("All features already integrated, nothing to do")
+        # If we are syncing from upstream, make sure to update source too
+        upstream_feature = self._get_upstream_feature()
+        if (
+            source_name == upstream_feature["name"]
+            and source_remote == upstream_feature["remote"]
+            and not self._upstream_is_source()
+        ):
+            source_feature = self._get_source_feature()
+            # Rename the upstream branch to avoid the case the source and upstream
+            # share the same branch name (origin/main and upstream/main)
+            upstream_feature_name = f"upstream-{upstream_feature['name']}"
+            repo.git.branch("-M", upstream_feature["name"], upstream_feature_name)
+            upstream_feature["name"] = upstream_feature_name
+            self._copy(repo, upstream_feature, source_feature, backup)
+            # Leave the local repository with the target branch checked out
+            repo.git.checkout(self.config["target"]["branch"])
+
         # Push every branch
         self._push(repo, local)
 
+    def _copy(self, repo, from_feature, to_feature, backup=False):
+        to_feature_branch = f"{to_feature['remote']}/{to_feature['name']}"
+        logger.info(f"Copying branch {from_feature['remote']}/{from_feature['name']} to {to_feature_branch}")
+        # Backup the feature to copy to
+        repo.git.checkout("-b", to_feature["name"], to_feature_branch)
+        if backup:
+            feature_backup_name = self._backup_name(to_feature["name"])
+            logger.debug(f"Backing up branch into {feature_backup_name}")
+            repo.git.branch("-c", feature_backup_name)
+            self.to_push.append((feature_backup_name, to_feature["remote"]))
+        repo.git.reset("--hard", from_feature["name"])
+        self.to_push.append((to_feature["name"], to_feature["remote"]))
+
     def _sync(self, backup, keep, local, folder, features=None, prev_feature=None, from_upstream=False):
         features = features if features else self.config["features"]
-        if prev_feature:
-            prev_feature = prev_feature
-        else:
+        if not prev_feature:
             prev_feature = self._get_upstream_feature() if from_upstream else self._get_source_feature()
         tmpdir = folder if folder else tempfile.mkdtemp()
         exception = None
@@ -302,6 +339,11 @@ class GUW:
         nf["status"] = "_added"
         # TODO check the existance of the remote
         self.config["features"].insert(idx + 1, nf)
+        # If the previous feature is already integrated, it might happen that
+        # branch has been deleted
+        if prev_feature["status"] == "integrated":
+            # If this is integrated, all previous features are also integrated
+            prev_feature = None
         # Sync it again
         self._sync(
             backup,
@@ -354,15 +396,11 @@ class GUW:
         if feature["status"] != "merging":
             logger.critical(f"The feature {feature_name} is not in merging state")
             return
-        if not idx:
-            prev_feature = self._get_source_feature()
-        else:
-            prev_feature = self.config["features"][idx - 1]
+        # TODO We can not integrate a branch with previous not integrated branches
         # Now the feature must be on merged to sync properly
         feature["status"] = "_merged"
         # Sync it again to integrate
-        self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature)
-        # Dump the new toml
+        self._sync(backup, keep, local, folder, None, from_upstream=True)
         self.dump()
 
 
