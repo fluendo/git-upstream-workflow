@@ -126,7 +126,7 @@ class GUW:
         logger.debug(f"Creating local branch {feature_branch}")
         repo.git.checkout("-b", feature["name"], feature_branch)
 
-    def _sync_at(self, tmpdir, backup, local, features, prev_feature):
+    def _sync_at(self, tmpdir, backup, local, features, prev_feature, interactive):
         logger.info(f"Work directory at {tmpdir}")
         # Fetch the source branch
         source_remote = prev_feature["remote"]
@@ -170,7 +170,23 @@ class GUW:
                 prev_feature = feature
                 feature["status"] = "integrated"
             elif feature["status"] == "merging" or feature["status"] == "pending":
-                self._rebase(repo, feature, prev_feature, prev_active_feature, backup)
+                try:
+                    self._rebase(repo, feature, prev_feature, prev_active_feature, backup)
+                except git.exc.GitCommandError as e:
+                    if not interactive:
+                        raise e
+                    from_ft_name = feature["name"]
+                    to_ft_name = prev_active_feature["name"]
+                    until_ft_branch = f"{prev_feature['remote']}/{prev_feature['name']}"
+                    print(
+                        f"Interactive mode: Conflicts found while rebasing {from_ft_name} onto {to_ft_name} until {until_ft_branch}"
+                    )
+                    print(f"    work directory at {tmpdir}")
+                    print("    paused to fix conflicts")
+                    input("    press a key when rebases ready and 'git rebase --continue' will be execute...")
+                    os.environ["GIT_EDITOR"] = "true"
+                    repo.git.rebase("--continue")
+
                 prev_active_feature = feature
                 prev_feature = feature
                 has_pending = True
@@ -242,14 +258,16 @@ class GUW:
         repo.git.reset("--hard", from_feature["name"])
         self.to_push.append((to_feature["name"], to_feature["remote"]))
 
-    def _sync(self, backup, keep, local, folder, features=None, prev_feature=None, from_upstream=False):
+    def _sync(
+        self, backup, keep, local, folder, features=None, prev_feature=None, from_upstream=False, interactive=False
+    ):
         features = features if features else self.config["features"]
         if not prev_feature:
             prev_feature = self._get_upstream_feature() if from_upstream else self._get_source_feature()
         tmpdir = folder if folder else tempfile.mkdtemp()
         exception = None
         try:
-            self._sync_at(tmpdir, backup, local, features, prev_feature)
+            self._sync_at(tmpdir, backup, local, features, prev_feature, interactive)
         except git.exc.GitCommandError as e:
             exception = e
         if not keep:
@@ -260,8 +278,8 @@ class GUW:
             print(exception.stderr, file=sys.stderr)
             exit(1)
 
-    def sync(self, backup, keep, local, folder):
-        self._sync(backup, keep, local, folder, from_upstream=True)
+    def sync(self, backup, keep, local, folder, interactive=False):
+        self._sync(backup, keep, local, folder, from_upstream=True, interactive=interactive)
 
     def dump(self):
         print(tomli_w.dumps(self.config))
@@ -352,6 +370,7 @@ class GUW:
             folder,
             self.config["features"][idx + 1 :],
             prev_feature,
+            False,
         )
         # Dump the new toml
         self.dump()
@@ -385,7 +404,7 @@ class GUW:
         feature["integrating_from"] = from_branch
 
         # Sync it again
-        self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature)
+        self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature, False)
 
     def integrate(self, backup, keep, local, folder, feature_name):
         feature, idx = self._get_feature_by_name(feature_name)
@@ -444,6 +463,9 @@ def run():
     # Sync subcommand
     sync_args = subparser.add_parser("sync", help="Sync the list of branches based on the configuration")
     _common_command_arguments(sync_args)
+    sync_args.add_argument(
+        "--interactive", help="Interactive mode to allow manual conflict resolution", action="store_true"
+    )
     # Markdown subcommand
     subparser.add_parser("markdown", help="Create a markdown content")
     # Check subcommand
@@ -491,7 +513,7 @@ def run():
 
     guw = GUW(config)
     if args.command == "sync":
-        guw.sync(args.backup, args.keep, args.local, args.directory)
+        guw.sync(args.backup, args.keep, args.local, args.directory, args.interactive)
     elif args.command == "markdown":
         guw.markdown()
     elif args.command == "check":
