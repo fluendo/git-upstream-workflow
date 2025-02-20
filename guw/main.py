@@ -223,6 +223,9 @@ class GUW:
             repo.git.branch("-M", upstream_feature["name"], upstream_feature_name)
             upstream_feature["name"] = upstream_feature_name
             self._copy(repo, upstream_feature, source_feature, backup)
+            # Leave the local repository with the target branch checked out
+            repo.git.checkout(self.config["target"]["branch"])
+
         # Push every branch
         self._push(repo, local)
 
