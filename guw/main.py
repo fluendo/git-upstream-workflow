@@ -175,7 +175,12 @@ class GUW:
                 except git.exc.GitCommandError as e:
                     if not interactive:
                         raise e
-                    print("Interactive mode: Conflicts found while rebasing")
+                    from_ft_name = feature["name"]
+                    to_ft_name = prev_active_feature["name"]
+                    until_ft_branch = f"{prev_feature['remote']}/{prev_feature['name']}"
+                    print(
+                        f"Interactive mode: Conflicts found while rebasing {from_ft_name} onto {to_ft_name} until {until_ft_branch}"
+                    )
                     print(f"    work directory at {tmpdir}")
                     print("    paused to fix conflicts")
                     input("    press a key when rebases ready and 'git rebase --continue' will be execute...")
