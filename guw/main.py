@@ -199,7 +199,7 @@ class GUW:
                 self._backup_feature(repo, feature, backup)
                 # Use the new branch to integrate from
                 repo.git.reset("--hard", feature["integrating_from"])
-                self._rebase(repo, feature, prev_feature, prev_active_feature, backup)
+                self._rebase(repo, feature, prev_feature, prev_active_feature, backup=False)
                 prev_active_feature = feature
                 prev_feature = feature
                 has_pending = True
