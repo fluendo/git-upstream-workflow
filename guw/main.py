@@ -185,7 +185,10 @@ class GUW:
                     print("    paused to fix conflicts")
                     input("    press a key when rebases ready and 'git rebase --continue' will be execute...")
                     os.environ["GIT_EDITOR"] = "true"
-                    repo.git.rebase("--continue")
+                    try:
+                        repo.git.rebase("--continue")
+                    except git.exc.GitCommandError as e:
+                        logger.warning(f"`git rebase --continue` failed — possibly nothing to rebase. Error: {e}")
 
                 prev_active_feature = feature
                 prev_feature = feature
