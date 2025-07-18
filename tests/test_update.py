@@ -76,7 +76,7 @@ class UpdateTestCase(unittest.TestCase):
         ]
         guw = GUW(tomli.loads(config))
         guw.update(
-            False,
+            True,
             True,
             True,
             self.tmpdir,
