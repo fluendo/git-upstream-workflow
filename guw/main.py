@@ -222,12 +222,11 @@ class GUW:
         # Now remove every feature that must be removed
         self.config["features"] = [f for f in self.config["features"] if f["status"] != "_remove"]
         # Make target branch be the last feature
-        last_feature = self.config["features"][-1]
-        if last_feature:
-            if last_feature["status"] != "integrated":
-                self._copy(repo, last_feature, self._get_target_feature(), backup)
-            else:
-                logger.info("All features already integrated, nothing to do")
+        last_feature = next(reversed([f for f in self.config["features"] if f["status"] != "integrated"]), None)
+        if not last_feature:
+            last_feature = self._get_source_feature()
+        self._copy(repo, last_feature, self._get_target_feature(), backup)
+
         # If we are syncing from upstream, make sure to update source too
         upstream_feature = self._get_upstream_feature()
         if (
@@ -383,13 +382,9 @@ class GUW:
         if not feature:
             logger.critical(f"Feature {feature} not found")
             return
-        if not idx:
-            prev_feature = self._get_source_feature()
-        else:
-            prev_feature = self.config["features"][idx - 1]
         feature["status"] = "_remove"
         # Sync it again
-        self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature, interactive=interactive)
+        self._sync(backup, keep, local, folder, self.config["features"], prev_feature=None, interactive=interactive)
         # Dump the new toml
         self.dump()
 
