@@ -386,7 +386,7 @@ class GUW:
         if not idx:
             prev_feature = self._get_source_feature()
         else:
-            prev_feature = self.config["features"][idx - 1]
+            prev_feature = self.config["features"][:idx - 1]
         feature["status"] = "_remove"
         # Sync it again
         self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature)
