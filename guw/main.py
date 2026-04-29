@@ -222,12 +222,16 @@ class GUW:
         # Now remove every feature that must be removed
         self.config["features"] = [f for f in self.config["features"] if f["status"] != "_remove"]
         # Make target branch be the last feature
-        last_feature = self.config["features"][-1]
-        if last_feature:
-            if last_feature["status"] != "integrated":
-                self._copy(repo, last_feature, self._get_target_feature(), backup)
-            else:
-                logger.info("All features already integrated, nothing to do")
+        if not self.config["features"]:
+            logger.info("All features removed, copying source to target")
+            self._copy(repo, prev_active_feature, self._get_target_feature(), backup)
+        else:
+            last_feature = self.config["features"][-1]
+            if last_feature:
+                if last_feature["status"] != "integrated":
+                    self._copy(repo, last_feature, self._get_target_feature(), backup)
+                else:
+                    logger.info("All features already integrated, nothing to do")
         # If we are syncing from upstream, make sure to update source too
         upstream_feature = self._get_upstream_feature()
         if (
@@ -379,17 +383,21 @@ class GUW:
         self.dump()
 
     def remove(self, backup, keep, local, folder, to_remove):
-        feature, idx = self._get_feature_by_name(to_remove)
-        if not feature:
-            logger.critical(f"Feature {feature} not found")
-            return
-        if not idx:
+        first_idx = None
+        for name in to_remove:
+            feature, idx = self._get_feature_by_name(name)
+            if not feature:
+                logger.critical(f"Feature {name} not found")
+                return
+            feature["status"] = "_remove"
+            if first_idx is None or idx < first_idx:
+                first_idx = idx
+        if not first_idx:
             prev_feature = self._get_source_feature()
         else:
-            prev_feature = self.config["features"][idx - 1]
-        feature["status"] = "_remove"
+            prev_feature = self.config["features"][first_idx - 1]
         # Sync it again
-        self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature)
+        self._sync(backup, keep, local, folder, self.config["features"][first_idx:], prev_feature)
         # Dump the new toml
         self.dump()
 
@@ -486,7 +494,7 @@ def run():
     # Remove subcommand
     remove_args = subparser.add_parser("remove", help="Remove a feature")
     _common_command_arguments(remove_args)
-    remove_args.add_argument("feature", help="Name of the feature to remove")
+    remove_args.add_argument("feature", nargs="+", help="Name(s) of the feature(s) to remove")
     # Update subcommand
     update_args = subparser.add_parser("update", help="Update a feature commits with other's branch commits")
     _common_command_arguments(update_args)
