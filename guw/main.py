@@ -378,7 +378,7 @@ class GUW:
         # Dump the new toml
         self.dump()
 
-    def remove(self, backup, keep, local, folder, to_remove):
+    def remove(self, backup, keep, local, folder, to_remove, interactive=False):
         feature, idx = self._get_feature_by_name(to_remove)
         if not feature:
             logger.critical(f"Feature {feature} not found")
@@ -389,7 +389,7 @@ class GUW:
             prev_feature = self.config["features"][idx - 1]
         feature["status"] = "_remove"
         # Sync it again
-        self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature)
+        self._sync(backup, keep, local, folder, self.config["features"][idx:], prev_feature, interactive=interactive)
         # Dump the new toml
         self.dump()
 
@@ -486,6 +486,9 @@ def run():
     # Remove subcommand
     remove_args = subparser.add_parser("remove", help="Remove a feature")
     _common_command_arguments(remove_args)
+    remove_args.add_argument(
+        "--interactive", help="Interactive mode to allow manual conflict resolution", action="store_true"
+    )
     remove_args.add_argument("feature", help="Name of the feature to remove")
     # Update subcommand
     update_args = subparser.add_parser("update", help="Update a feature commits with other's branch commits")
@@ -532,7 +535,7 @@ def run():
             args.prev_feature,
         )
     elif args.command == "remove":
-        guw.remove(args.backup, args.keep, args.local, args.directory, args.feature)
+        guw.remove(args.backup, args.keep, args.local, args.directory, args.feature, args.interactive)
     elif args.command == "update":
         guw.update(
             args.backup,
